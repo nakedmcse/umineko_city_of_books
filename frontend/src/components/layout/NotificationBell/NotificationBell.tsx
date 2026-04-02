@@ -29,6 +29,10 @@ function notificationText(type: NotificationType): string {
             return "commented on your post";
         case "mention":
             return "mentioned you";
+        case "art_liked":
+            return "liked your art";
+        case "art_commented":
+            return "commented on your art";
     }
 }
 

@@ -11,6 +11,10 @@ const pages = [
     { key: "rules_game_board_umineko", label: "Game Board (Umineko)" },
     { key: "rules_game_board_higurashi", label: "Game Board (Higurashi)" },
     { key: "rules_game_board_ciconia", label: "Game Board (Ciconia)" },
+    { key: "rules_gallery", label: "Gallery (General)" },
+    { key: "rules_gallery_umineko", label: "Gallery (Umineko)" },
+    { key: "rules_gallery_higurashi", label: "Gallery (Higurashi)" },
+    { key: "rules_gallery_ciconia", label: "Gallery (Ciconia)" },
 ];
 
 export function AdminContentRules() {

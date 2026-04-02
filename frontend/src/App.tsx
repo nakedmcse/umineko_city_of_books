@@ -30,6 +30,9 @@ import { SocialFeedPage } from "./pages/feed/SocialFeedPage";
 import { PostDetailPage } from "./pages/feed/PostDetailPage";
 import { UsersPage } from "./pages/users/UsersPage";
 import { ChatPage } from "./pages/chat/ChatPage";
+import { ArtGalleryPage } from "./pages/gallery/ArtGalleryPage";
+import { ArtDetailPage } from "./pages/gallery/ArtDetailPage";
+import { GalleryDetailPage } from "./pages/gallery/GalleryDetailPage";
 import { MaintenancePage } from "./pages/maintenance/MaintenancePage";
 
 const homePageRoutes: Record<string, string> = {
@@ -100,6 +103,12 @@ function AppLayout() {
                         <Route path="/game-board/higurashi" element={<SocialFeedPage corner="higurashi" />} />
                         <Route path="/game-board/ciconia" element={<SocialFeedPage corner="ciconia" />} />
                         <Route path="/game-board/:id" element={<PostDetailPage />} />
+                        <Route path="/gallery" element={<ArtGalleryPage />} />
+                        <Route path="/gallery/umineko" element={<ArtGalleryPage corner="umineko" />} />
+                        <Route path="/gallery/higurashi" element={<ArtGalleryPage corner="higurashi" />} />
+                        <Route path="/gallery/ciconia" element={<ArtGalleryPage corner="ciconia" />} />
+                        <Route path="/gallery/art/:id" element={<ArtDetailPage />} />
+                        <Route path="/gallery/view/:id" element={<GalleryDetailPage />} />
                         <Route path="/theory/:id" element={<TheoryPage />} />
                         <Route path="/quotes" element={<QuoteBrowserPage />} />
                         <Route path="/users" element={<UsersPage />} />

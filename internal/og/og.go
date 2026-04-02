@@ -15,6 +15,7 @@ type (
 		theoryRepo repository.TheoryRepository
 		userRepo   repository.UserRepository
 		postRepo   repository.PostRepository
+		artRepo    repository.ArtRepository
 		baseHTML   string
 		baseURL    string
 	}
@@ -36,12 +37,14 @@ func NewResolver(
 	theoryRepo repository.TheoryRepository,
 	userRepo repository.UserRepository,
 	postRepo repository.PostRepository,
+	artRepo repository.ArtRepository,
 	baseHTML, baseURL string,
 ) *Resolver {
 	return &Resolver{
 		theoryRepo: theoryRepo,
 		userRepo:   userRepo,
 		postRepo:   postRepo,
+		artRepo:    artRepo,
 		baseHTML:   baseHTML,
 		baseURL:    baseURL,
 	}
@@ -69,6 +72,36 @@ func (r *Resolver) metaForPath(ctx context.Context, path string) *Meta {
 	if len(parts) == 2 && parts[0] == "game-board" {
 		if _, err := uuid.Parse(parts[1]); err == nil {
 			return r.postMeta(ctx, parts[1])
+		}
+	}
+
+	if len(parts) == 3 && parts[0] == "gallery" && parts[1] == "art" {
+		if _, err := uuid.Parse(parts[2]); err == nil {
+			return r.artMeta(ctx, parts[2])
+		}
+	}
+
+	if len(parts) == 3 && parts[0] == "gallery" && parts[1] == "view" {
+		if _, err := uuid.Parse(parts[2]); err == nil {
+			return r.galleryMeta(ctx, parts[2])
+		}
+	}
+
+	if len(parts) == 1 && parts[0] == "gallery" {
+		return &Meta{
+			Title:       "Gallery - Umineko City of Books",
+			Description: "Browse fan art galleries from the Umineko community.",
+			URL:         r.baseURL + "/gallery",
+		}
+	}
+
+	if len(parts) == 2 && parts[0] == "gallery" {
+		corner := parts[1]
+		name := strings.ToUpper(corner[:1]) + corner[1:]
+		return &Meta{
+			Title:       name + " Gallery - Umineko City of Books",
+			Description: fmt.Sprintf("Browse %s fan art from the Umineko community.", corner),
+			URL:         fmt.Sprintf("%s/gallery/%s", r.baseURL, corner),
 		}
 	}
 
@@ -155,6 +188,70 @@ func (r *Resolver) postMeta(ctx context.Context, idStr string) *Meta {
 			meta.Image = first.ThumbnailURL
 		} else if first.MediaType == "image" {
 			meta.Image = first.MediaURL
+		}
+	}
+
+	return meta
+}
+
+func (r *Resolver) artMeta(ctx context.Context, idStr string) *Meta {
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		return nil
+	}
+
+	art, err := r.artRepo.GetByID(ctx, id, uuid.Nil)
+	if err != nil || art == nil {
+		return nil
+	}
+
+	desc := art.Description
+	if desc == "" {
+		desc = fmt.Sprintf("Art by %s on Umineko City of Books", art.AuthorDisplayName)
+	}
+	if len(desc) > 200 {
+		desc = desc[:197] + "..."
+	}
+
+	return &Meta{
+		Title:       fmt.Sprintf("%s - by %s", art.Title, art.AuthorDisplayName),
+		Description: desc,
+		Image:       art.ImageURL,
+		URL:         fmt.Sprintf("%s/gallery/art/%s", r.baseURL, idStr),
+	}
+}
+
+func (r *Resolver) galleryMeta(ctx context.Context, idStr string) *Meta {
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		return nil
+	}
+
+	gallery, err := r.artRepo.GetGalleryByID(ctx, id)
+	if err != nil || gallery == nil {
+		return nil
+	}
+
+	desc := gallery.Description
+	if desc == "" {
+		desc = fmt.Sprintf("%s's art gallery on Umineko City of Books", gallery.AuthorDisplayName)
+	}
+	if len(desc) > 200 {
+		desc = desc[:197] + "..."
+	}
+
+	meta := &Meta{
+		Title:       fmt.Sprintf("%s - %s's Gallery", gallery.Name, gallery.AuthorDisplayName),
+		Description: desc,
+		URL:         fmt.Sprintf("%s/gallery/view/%s", r.baseURL, idStr),
+	}
+
+	if gallery.CoverImageURL != "" {
+		meta.Image = gallery.CoverImageURL
+	} else {
+		previews, _ := r.artRepo.GetGalleryPreviewImages(ctx, id, 1)
+		if len(previews) > 0 {
+			meta.Image = previews[0].ImageURL
 		}
 	}
 
