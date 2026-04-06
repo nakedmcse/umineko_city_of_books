@@ -36,6 +36,7 @@ import { CreateMysteryPage } from "./pages/mysteries/CreateMysteryPage";
 import { ShipsListPage } from "./pages/ships/ShipsListPage";
 import { ShipDetailPage } from "./pages/ships/ShipDetailPage";
 import { CreateShipPage } from "./pages/ships/CreateShipPage";
+import { SuggestionsPage } from "./pages/suggestions/SuggestionsPage";
 import { SocialFeedPage } from "./pages/feed/SocialFeedPage";
 import { PostDetailPage } from "./pages/feed/PostDetailPage";
 import { UsersPage } from "./pages/users/UsersPage";
@@ -121,6 +122,8 @@ function AppLayout() {
                         <Route path="/theory/:id" element={<TheoryPage />} />
                         <Route path="/announcements" element={<AnnouncementsListPage />} />
                         <Route path="/announcements/:id" element={<AnnouncementDetailPage />} />
+                        <Route path="/suggestions" element={<SuggestionsPage />} />
+                        <Route path="/suggestions/:id" element={<PostDetailPage />} />
                         <Route path="/mysteries" element={<MysteryListPage />} />
                         <Route path="/mystery/:id" element={<MysteryDetailPage />} />
                         <Route path="/ships" element={<ShipsListPage />} />

@@ -16,6 +16,7 @@ import { linkify } from "../../../utils/linkify";
 import { ReportButton } from "../../ReportButton/ReportButton";
 import { ProfileLink } from "../../ProfileLink/ProfileLink";
 import { MediaGallery } from "../MediaGallery/MediaGallery";
+import { PollDisplay } from "../PollDisplay/PollDisplay";
 import { PostEmbeds } from "../PostEmbeds/PostEmbeds";
 import { MentionTextArea } from "../../MentionTextArea/MentionTextArea";
 import { Button } from "../../Button/Button";
@@ -203,6 +204,7 @@ export function PostCard({ post, onDelete, onEdit }: PostCardProps) {
             ) : (
                 <div className={styles.body} onClick={() => navigate(`/game-board/${post.id}`)}>
                     <p className={styles.text}>{linkify(displayBody)}</p>
+                    {post.poll && <PollDisplay poll={post.poll} postId={post.id} onVoted={onEdit} />}
                     <MediaGallery media={displayMedia} />
                     {post.embeds && <PostEmbeds embeds={post.embeds} />}
                 </div>

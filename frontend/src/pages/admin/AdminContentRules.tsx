@@ -18,6 +18,7 @@ const pages = [
     { key: "rules_gallery_umineko", label: "Gallery (Umineko)" },
     { key: "rules_gallery_higurashi", label: "Gallery (Higurashi)" },
     { key: "rules_gallery_ciconia", label: "Gallery (Ciconia)" },
+    { key: "rules_suggestions", label: "Site Improvements" },
 ];
 
 export function AdminContentRules() {

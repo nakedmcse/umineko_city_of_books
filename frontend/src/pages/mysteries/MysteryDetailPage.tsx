@@ -1,16 +1,93 @@
-import {useCallback, useEffect, useMemo, useRef, useState} from "react";
-import {useLocation, useNavigate, useParams} from "react-router";
-import type {MysteryAttempt, MysteryDetail} from "../../types/api";
-import {addMysteryClue, createMysteryAttempt, deleteMystery, getMystery} from "../../api/endpoints";
-import {useAuth} from "../../hooks/useAuth";
-import {useNotifications} from "../../hooks/useNotifications";
-import {useThrottled} from "../../hooks/useThrottled";
-import {can} from "../../utils/permissions";
-import {Button} from "../../components/Button/Button";
-import {ProfileLink} from "../../components/ProfileLink/ProfileLink";
-import {relativeTime} from "../../utils/notifications";
-import {AttemptItem} from "./AttemptItem";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router";
+import type { MysteryAttempt, MysteryClue, MysteryDetail } from "../../types/api";
+import { addMysteryClue, createMysteryAttempt, deleteMystery, getMystery } from "../../api/endpoints";
+import { useAuth } from "../../hooks/useAuth";
+import { useNotifications } from "../../hooks/useNotifications";
+import { useThrottled } from "../../hooks/useThrottled";
+import { can } from "../../utils/permissions";
+import { Button } from "../../components/Button/Button";
+import { ProfileLink } from "../../components/ProfileLink/ProfileLink";
+import { relativeTime } from "../../utils/notifications";
+import { AttemptItem } from "./AttemptItem";
 import styles from "./MysteryPages.module.css";
+
+function PrivateClues({
+    clues,
+    playerId,
+    mysteryId,
+    isAuthor,
+    onAdded,
+}: {
+    clues: MysteryClue[];
+    playerId: string;
+    mysteryId: string;
+    isAuthor: boolean;
+    onAdded: () => void;
+}) {
+    const [body, setBody] = useState("");
+    const [adding, setAdding] = useState(false);
+    const playerClues = clues.filter(c => c.player_id === playerId);
+
+    async function handleAdd() {
+        if (!body.trim() || adding) {
+            return;
+        }
+        setAdding(true);
+        try {
+            await addMysteryClue(mysteryId, body.trim(), "red", playerId);
+            setBody("");
+            onAdded();
+        } catch {
+            // ignore
+        } finally {
+            setAdding(false);
+        }
+    }
+
+    return (
+        <div style={{ padding: "0 0.5rem", marginBottom: "0.5rem" }}>
+            {playerClues.length > 0 && (
+                <div className={styles.cluesSection} style={{ marginBottom: "0.5rem" }}>
+                    {playerClues.map(clue => (
+                        <div key={clue.id} className={styles.clue} style={{ fontSize: "0.85rem" }}>
+                            {clue.body}
+                        </div>
+                    ))}
+                </div>
+            )}
+            {isAuthor && (
+                <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+                    <input
+                        type="text"
+                        value={body}
+                        onChange={e => setBody(e.target.value)}
+                        placeholder="Private red truth for this player..."
+                        onKeyDown={e => {
+                            if (e.key === "Enter") {
+                                handleAdd();
+                            }
+                        }}
+                        style={{
+                            flex: 1,
+                            background: "var(--bg-void)",
+                            border: "1px solid rgba(229, 57, 53, 0.3)",
+                            color: "#ef9a9a",
+                            padding: "0.35rem 0.6rem",
+                            borderRadius: "4px",
+                            fontSize: "0.8rem",
+                            fontFamily: "inherit",
+                            fontStyle: "italic",
+                        }}
+                    />
+                    <Button variant="danger" size="small" onClick={handleAdd} disabled={!body.trim() || adding}>
+                        {adding ? "..." : "Add private Red Truth"}
+                    </Button>
+                </div>
+            )}
+        </div>
+    );
+}
 
 function findWinningAttempt(attempts: MysteryAttempt[]): MysteryAttempt | null {
     for (const a of attempts) {
@@ -37,15 +114,6 @@ export function MysteryDetailPage() {
     const [loading, setLoading] = useState(true);
     const hash = location.hash;
     const highlightedAttempt = hash.startsWith("#attempt-") ? hash.replace("#attempt-", "") : null;
-    const [spoilerRevealed, setSpoilerRevealed] = useState(() => {
-        if (!id) {
-            return false;
-        }
-        if (typeof window !== "undefined" && window.location.hash.startsWith("#attempt-")) {
-            return true;
-        }
-        return localStorage.getItem(`mystery-revealed-${id}`) === "1";
-    });
     const [attemptBody, setAttemptBody] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [collapsedPlayers, setCollapsedPlayers] = useState<Set<string>>(new Set());
@@ -167,6 +235,12 @@ export function MysteryDetailPage() {
                 }
                 throttledFetchMystery();
             }
+            if (msg.type === "mystery_clue_added") {
+                const data = msg.data as { mystery_id?: string };
+                if (data.mystery_id === id) {
+                    throttledFetchMystery();
+                }
+            }
         });
     }, [id, addWSListener, throttledFetchMystery, user?.id]);
 
@@ -211,7 +285,7 @@ export function MysteryDetailPage() {
     }, [id]);
 
     useEffect(() => {
-        if (!mystery || loading || !highlightedAttempt || !spoilerRevealed) {
+        if (!mystery || loading || !highlightedAttempt) {
             return;
         }
         requestAnimationFrame(() => {
@@ -220,7 +294,7 @@ export function MysteryDetailPage() {
                 el.scrollIntoView({ behavior: "smooth", block: "center" });
             }
         });
-    }, [mystery, loading, highlightedAttempt, spoilerRevealed]);
+    }, [mystery, loading, highlightedAttempt]);
 
     if (loading) {
         return <div className="loading">Investigating the mystery...</div>;
@@ -311,17 +385,19 @@ export function MysteryDetailPage() {
 
                 <div className={styles.detailBody}>{mystery.body}</div>
 
-                {mystery.clues.length > 0 && (
+                {mystery.clues.filter(c => !c.player_id).length > 0 && (
                     <div className={styles.cluesSection}>
                         <h3 className={styles.cluesTitle}>Red Truths</h3>
-                        {mystery.clues.map(clue => (
-                            <div
-                                key={clue.id}
-                                className={`${styles.clue}${clue.truth_type === "purple" ? ` ${styles.cluePurple}` : ""}`}
-                            >
-                                {clue.body}
-                            </div>
-                        ))}
+                        {mystery.clues
+                            .filter(c => !c.player_id)
+                            .map(clue => (
+                                <div
+                                    key={clue.id}
+                                    className={`${styles.clue}${clue.truth_type === "purple" ? ` ${styles.cluePurple}` : ""}`}
+                                >
+                                    {clue.body}
+                                </div>
+                            ))}
                     </div>
                 )}
 
@@ -336,186 +412,189 @@ export function MysteryDetailPage() {
                         />
                         <div className={styles.composerActions}>
                             <Button
-                                variant="primary"
+                                variant="danger"
                                 size="small"
                                 onClick={handleAddClue}
                                 disabled={!newClueBody.trim() || addingClue}
                             >
-                                {addingClue ? "..." : "Add Red Truth"}
+                                {addingClue ? "..." : "Add global Red Truth"}
                             </Button>
                         </div>
                     </div>
                 )}
             </div>
 
-            {!spoilerRevealed && !isAuthor ? (
-                <div className={styles.spoilerGate}>
-                    <h3 className={styles.spoilerGateTitle}>Want to try solving this mystery?</h3>
-                    <p className={styles.spoilerGateText}>
-                        The attempts below may contain spoilers. Read the mystery and clues above first, then reveal
-                        when ready.
-                    </p>
-                    <Button
-                        variant="primary"
-                        onClick={() => {
-                            localStorage.setItem(`mystery-revealed-${id}`, "1");
-                            setSpoilerRevealed(true);
-                        }}
-                    >
-                        Reveal Attempts ({mystery.attempts.length})
-                    </Button>
-                </div>
-            ) : (
-                <div className={styles.attemptsSection}>
-                    <h3 className={styles.attemptsTitle}>Blue Truth Attempts ({mystery.attempts.length})</h3>
+            <div className={styles.attemptsSection}>
+                <h3 className={styles.attemptsTitle}>Blue Truth Attempts ({mystery.attempts.length})</h3>
 
-                    {canSeeAsGameMaster && !mystery.solved && groupedAttempts.length > 0 && (
-                        <div className={styles.playerPills}>
-                            {groupedAttempts.map(group => {
-                                const isUnread = unreadPlayers.has(group.author.id);
-                                return (
-                                    <button
-                                        key={group.author.id}
-                                        type="button"
-                                        className={`${styles.playerPill}${isUnread ? ` ${styles.playerPillUnread}` : ""}`}
-                                        onClick={() => jumpToPlayer(group.author.id)}
-                                        title={`Jump to ${group.author.display_name}'s attempts`}
-                                    >
-                                        {group.author.avatar_url ? (
-                                            <img
-                                                className={styles.playerPillAvatar}
-                                                src={group.author.avatar_url}
-                                                alt=""
+                {canSeeAsGameMaster && !mystery.solved && groupedAttempts.length > 0 && (
+                    <div className={styles.playerPills}>
+                        {groupedAttempts.map(group => {
+                            const isUnread = unreadPlayers.has(group.author.id);
+                            return (
+                                <button
+                                    key={group.author.id}
+                                    type="button"
+                                    className={`${styles.playerPill}${isUnread ? ` ${styles.playerPillUnread}` : ""}`}
+                                    onClick={() => jumpToPlayer(group.author.id)}
+                                    title={`Jump to ${group.author.display_name}'s attempts`}
+                                >
+                                    {group.author.avatar_url ? (
+                                        <img className={styles.playerPillAvatar} src={group.author.avatar_url} alt="" />
+                                    ) : (
+                                        <span className={styles.playerPillAvatarPlaceholder}>
+                                            {group.author.display_name[0]}
+                                        </span>
+                                    )}
+                                    <span className={styles.playerPillName}>{group.author.display_name}</span>
+                                    {isUnread && <span className={styles.playerPillDot} aria-label="unread" />}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
+
+                {winningAttempt && (
+                    <div className={styles.pinnedWinner}>
+                        <div className={styles.pinnedWinnerHeader}>
+                            <span className={styles.pinnedWinnerLabel}>Winning Attempt</span>
+                            <a
+                                className={styles.pinnedWinnerJump}
+                                href={`#attempt-${winningAttempt.id}`}
+                                onClick={e => {
+                                    e.preventDefault();
+                                    const el = document.getElementById(`attempt-${winningAttempt.id}`);
+                                    if (el) {
+                                        el.scrollIntoView({ behavior: "smooth", block: "center" });
+                                        window.history.replaceState(null, "", `#attempt-${winningAttempt.id}`);
+                                    }
+                                }}
+                            >
+                                Jump to original &rarr;
+                            </a>
+                        </div>
+                        <div className={styles.pinnedWinnerMeta}>
+                            <ProfileLink user={winningAttempt.author} size="small" />
+                            <span>{relativeTime(winningAttempt.created_at)}</span>
+                        </div>
+                        <div className={styles.pinnedWinnerBody}>{winningAttempt.body}</div>
+                    </div>
+                )}
+
+                {canSeeAsGameMaster || mystery.solved ? (
+                    groupedAttempts.map(group => {
+                        const collapsed = collapsedPlayers.has(group.author.id);
+                        return (
+                            <div
+                                key={group.author.id}
+                                id={`player-group-${group.author.id}`}
+                                className={styles.playerGroup}
+                            >
+                                <button
+                                    type="button"
+                                    className={styles.playerGroupHeader}
+                                    onClick={() => togglePlayerCollapse(group.author.id)}
+                                    aria-expanded={!collapsed}
+                                >
+                                    <span className={styles.playerGroupChevron}>{collapsed ? "\u25B6" : "\u25BC"}</span>
+                                    <ProfileLink user={group.author} size="small" />
+                                    <span className={styles.playerGroupCount}>
+                                        {group.attempts.length} attempt
+                                        {group.attempts.length !== 1 ? "s" : ""}
+                                    </span>
+                                </button>
+                                {!collapsed && (
+                                    <>
+                                        <PrivateClues
+                                            clues={mystery.clues}
+                                            playerId={group.author.id}
+                                            mysteryId={mystery.id}
+                                            isAuthor={isAuthor}
+                                            onAdded={fetchMystery}
+                                        />
+                                        {group.attempts.map(a => (
+                                            <AttemptItem
+                                                key={a.id}
+                                                attempt={a}
+                                                mysteryId={mystery.id}
+                                                isAuthor={isAuthor}
+                                                onRefresh={fetchMystery}
+                                                mysterySolved={mystery.solved}
                                             />
-                                        ) : (
-                                            <span className={styles.playerPillAvatarPlaceholder}>
-                                                {group.author.display_name[0]}
-                                            </span>
-                                        )}
-                                        <span className={styles.playerPillName}>{group.author.display_name}</span>
-                                        {isUnread && <span className={styles.playerPillDot} aria-label="unread" />}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    )}
-
-                    {winningAttempt && (
-                        <div className={styles.pinnedWinner}>
-                            <div className={styles.pinnedWinnerHeader}>
-                                <span className={styles.pinnedWinnerLabel}>Winning Attempt</span>
-                                <a
-                                    className={styles.pinnedWinnerJump}
-                                    href={`#attempt-${winningAttempt.id}`}
-                                    onClick={e => {
-                                        e.preventDefault();
-                                        const el = document.getElementById(`attempt-${winningAttempt.id}`);
-                                        if (el) {
-                                            el.scrollIntoView({ behavior: "smooth", block: "center" });
-                                            window.history.replaceState(null, "", `#attempt-${winningAttempt.id}`);
-                                        }
-                                    }}
-                                >
-                                    Jump to original &rarr;
-                                </a>
+                                        ))}
+                                    </>
+                                )}
                             </div>
-                            <div className={styles.pinnedWinnerMeta}>
-                                <ProfileLink user={winningAttempt.author} size="small" />
-                                <span>{relativeTime(winningAttempt.created_at)}</span>
+                        );
+                    })
+                ) : (
+                    <>
+                        {user && mystery.clues.filter(c => c.player_id === user.id).length > 0 && (
+                            <div className={styles.cluesSection}>
+                                <h3 className={styles.cluesTitle} style={{ fontSize: "0.85rem" }}>
+                                    Private Red Truths (to you)
+                                </h3>
+                                {mystery.clues
+                                    .filter(c => c.player_id === user.id)
+                                    .map(clue => (
+                                        <div key={clue.id} className={styles.clue}>
+                                            {clue.body}
+                                        </div>
+                                    ))}
                             </div>
-                            <div className={styles.pinnedWinnerBody}>{winningAttempt.body}</div>
-                        </div>
-                    )}
-
-                    {canSeeAsGameMaster || mystery.solved
-                        ? groupedAttempts.map(group => {
-                              const collapsed = collapsedPlayers.has(group.author.id);
-                              return (
-                                  <div
-                                      key={group.author.id}
-                                      id={`player-group-${group.author.id}`}
-                                      className={styles.playerGroup}
-                                  >
-                                      <button
-                                          type="button"
-                                          className={styles.playerGroupHeader}
-                                          onClick={() => togglePlayerCollapse(group.author.id)}
-                                          aria-expanded={!collapsed}
-                                      >
-                                          <span className={styles.playerGroupChevron}>
-                                              {collapsed ? "\u25B6" : "\u25BC"}
-                                          </span>
-                                          <ProfileLink user={group.author} size="small" />
-                                          <span className={styles.playerGroupCount}>
-                                              {group.attempts.length} attempt
-                                              {group.attempts.length !== 1 ? "s" : ""}
-                                          </span>
-                                      </button>
-                                      {!collapsed &&
-                                          group.attempts.map(a => (
-                                              <AttemptItem
-                                                  key={a.id}
-                                                  attempt={a}
-                                                  mysteryId={mystery.id}
-                                                  isAuthor={isAuthor}
-                                                  onRefresh={fetchMystery}
-                                                  mysterySolved={mystery.solved}
-                                              />
-                                          ))}
-                                  </div>
-                              );
-                          })
-                        : mystery.attempts.map(a => (
-                              <AttemptItem
-                                  key={a.id}
-                                  attempt={a}
-                                  mysteryId={mystery.id}
-                                  isAuthor={isAuthor}
-                                  onRefresh={fetchMystery}
-                                  mysterySolved={mystery.solved}
-                              />
-                          ))}
-
-                    {mystery.attempts.length === 0 && (
-                        <div className="empty-state">
-                            {!canSeeAsGameMaster && mystery.player_count > 0
-                                ? `There ${mystery.player_count === 1 ? "is" : "are"} ${mystery.player_count} piece${mystery.player_count !== 1 ? "s" : ""} playing this mystery. Join the game board and declare your own blue truth!`
-                                : canSeeAsGameMaster
-                                  ? "No attempts yet. Waiting for pieces to make their move."
-                                  : "No attempts yet. Be the first to declare your blue truth!"}
-                        </div>
-                    )}
-
-                    {user && !isAuthor && !mystery.solved && (
-                        <div className={styles.composer}>
-                            <textarea
-                                className={styles.composerTextarea}
-                                placeholder="Declare your blue truth..."
-                                value={attemptBody}
-                                onChange={e => setAttemptBody(e.target.value)}
-                                rows={3}
+                        )}
+                        {mystery.attempts.map(a => (
+                            <AttemptItem
+                                key={a.id}
+                                attempt={a}
+                                mysteryId={mystery.id}
+                                isAuthor={isAuthor}
+                                onRefresh={fetchMystery}
+                                mysterySolved={mystery.solved}
                             />
-                            <div className={styles.composerActions}>
-                                <Button
-                                    variant="primary"
-                                    onClick={handleSubmitAttempt}
-                                    disabled={!attemptBody.trim() || submitting}
-                                >
-                                    {submitting ? "..." : "Submit Blue Truth"}
-                                </Button>
-                            </div>
-                        </div>
-                    )}
+                        ))}
+                    </>
+                )}
 
-                    {!user && (
-                        <div className="empty-state">
-                            <Button variant="primary" onClick={() => navigate("/login")}>
-                                Sign in to attempt
+                {mystery.attempts.length === 0 && (
+                    <div className="empty-state">
+                        {!canSeeAsGameMaster && mystery.player_count > 0
+                            ? `There ${mystery.player_count === 1 ? "is" : "are"} ${mystery.player_count} piece${mystery.player_count !== 1 ? "s" : ""} playing this mystery. Join the game board and declare your own blue truth!`
+                            : canSeeAsGameMaster
+                              ? "No attempts yet. Waiting for pieces to make their move."
+                              : "No attempts yet. Be the first to declare your blue truth!"}
+                    </div>
+                )}
+
+                {user && !isAuthor && !mystery.solved && (
+                    <div className={styles.composer}>
+                        <textarea
+                            className={styles.composerTextarea}
+                            placeholder="Declare your blue truth..."
+                            value={attemptBody}
+                            onChange={e => setAttemptBody(e.target.value)}
+                            rows={3}
+                        />
+                        <div className={styles.composerActions}>
+                            <Button
+                                variant="primary"
+                                onClick={handleSubmitAttempt}
+                                disabled={!attemptBody.trim() || submitting}
+                            >
+                                {submitting ? "..." : "Submit Blue Truth"}
                             </Button>
                         </div>
-                    )}
-                </div>
-            )}
+                    </div>
+                )}
+
+                {!user && (
+                    <div className="empty-state">
+                        <Button variant="primary" onClick={() => navigate("/login")}>
+                            Sign in to attempt
+                        </Button>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

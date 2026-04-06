@@ -91,6 +91,13 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                         Announcements
                         {newAnnouncement && <span className={styles.newBadge}>New</span>}
                     </NavLink>
+                    <NavLink
+                        to="/suggestions"
+                        className={({ isActive }) => `${styles.link}${isActive ? ` ${styles.active}` : ""}`}
+                        onClick={onClose}
+                    >
+                        Site Improvements
+                    </NavLink>
                     <div className={styles.section}>
                         <span className={styles.sectionLabel}>Browse</span>
                         <button
