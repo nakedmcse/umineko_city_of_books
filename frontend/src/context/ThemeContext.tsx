@@ -7,14 +7,19 @@ const STORAGE_KEY = "ut-theme";
 const PARTICLES_KEY = "ut-particles";
 const FALLBACK_THEME: ThemeType = "featherine";
 
+const VALID_THEMES: Set<string> = new Set([
+    "featherine",
+    "bernkastel",
+    "lambdadelta",
+    "beatrice",
+    "erika",
+    "rika",
+    "mion",
+    "satoko",
+]);
+
 function isValidTheme(value: string): value is ThemeType {
-    return (
-        value === "featherine" ||
-        value === "bernkastel" ||
-        value === "lambdadelta" ||
-        value === "beatrice" ||
-        value === "erika"
-    );
+    return VALID_THEMES.has(value);
 }
 
 function hasStoredTheme(): boolean {
