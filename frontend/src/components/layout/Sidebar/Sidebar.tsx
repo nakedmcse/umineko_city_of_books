@@ -196,6 +196,13 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                             Ships
                         </NavLink>
                         <NavLink
+                            to="/fanfiction"
+                            className={({ isActive }) => `${styles.link}${isActive ? ` ${styles.active}` : ""}`}
+                            onClick={onClose}
+                        >
+                            Fanfictions
+                        </NavLink>
+                        <NavLink
                             to="/users"
                             className={({ isActive }) => `${styles.link}${isActive ? ` ${styles.active}` : ""}`}
                             onClick={onClose}
@@ -241,6 +248,13 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                                 onClick={onClose}
                             >
                                 New Ship
+                            </NavLink>
+                            <NavLink
+                                to="/fanfiction/new"
+                                className={({ isActive }) => `${styles.link}${isActive ? ` ${styles.active}` : ""}`}
+                                onClick={onClose}
+                            >
+                                New Fanfic
                             </NavLink>
                         </div>
                     )}

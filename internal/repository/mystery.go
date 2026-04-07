@@ -39,8 +39,25 @@ type (
 		IsSolved(ctx context.Context, mysteryID uuid.UUID) (bool, error)
 
 		GetLeaderboard(ctx context.Context, limit int) ([]LeaderboardEntry, error)
+		GetTopDetectiveID(ctx context.Context) (string, error)
 
 		CountAttempts(ctx context.Context, mysteryID uuid.UUID) (int, error)
+
+		CreateComment(ctx context.Context, id uuid.UUID, mysteryID uuid.UUID, parentID *uuid.UUID, userID uuid.UUID, body string) error
+		UpdateComment(ctx context.Context, id uuid.UUID, userID uuid.UUID, body string) error
+		UpdateCommentAsAdmin(ctx context.Context, id uuid.UUID, body string) error
+		DeleteComment(ctx context.Context, id uuid.UUID, userID uuid.UUID) error
+		DeleteCommentAsAdmin(ctx context.Context, id uuid.UUID) error
+		GetComments(ctx context.Context, mysteryID uuid.UUID, viewerID uuid.UUID, excludeUserIDs []uuid.UUID) ([]MysteryCommentRow, error)
+		GetCommentMysteryID(ctx context.Context, commentID uuid.UUID) (uuid.UUID, error)
+		GetCommentAuthorID(ctx context.Context, commentID uuid.UUID) (uuid.UUID, error)
+		LikeComment(ctx context.Context, userID uuid.UUID, commentID uuid.UUID) error
+		UnlikeComment(ctx context.Context, userID uuid.UUID, commentID uuid.UUID) error
+		AddCommentMedia(ctx context.Context, commentID uuid.UUID, mediaURL string, mediaType string, thumbnailURL string, sortOrder int) (int64, error)
+		UpdateCommentMediaURL(ctx context.Context, id int64, mediaURL string) error
+		UpdateCommentMediaThumbnail(ctx context.Context, id int64, thumbnailURL string) error
+		GetCommentMedia(ctx context.Context, commentID uuid.UUID) ([]MysteryCommentMediaRow, error)
+		GetCommentMediaBatch(ctx context.Context, commentIDs []uuid.UUID) (map[uuid.UUID][]MysteryCommentMediaRow, error)
 	}
 
 	MysteryRow struct {
@@ -82,13 +99,42 @@ type (
 		CreatedAt         string
 	}
 
+	MysteryCommentRow struct {
+		ID                uuid.UUID
+		MysteryID         uuid.UUID
+		ParentID          *uuid.UUID
+		UserID            uuid.UUID
+		Body              string
+		CreatedAt         string
+		UpdatedAt         *string
+		AuthorUsername    string
+		AuthorDisplayName string
+		AuthorAvatarURL   string
+		AuthorRole        string
+		LikeCount         int
+		UserLiked         bool
+	}
+
+	MysteryCommentMediaRow struct {
+		ID           int
+		CommentID    uuid.UUID
+		MediaURL     string
+		MediaType    string
+		ThumbnailURL string
+		SortOrder    int
+	}
+
 	LeaderboardEntry struct {
-		UserID      uuid.UUID
-		Username    string
-		DisplayName string
-		AvatarURL   string
-		Role        string
-		SolvedCount int
+		UserID          uuid.UUID
+		Username        string
+		DisplayName     string
+		AvatarURL       string
+		Role            string
+		Score           int
+		EasySolved      int
+		MediumSolved    int
+		HardSolved      int
+		NightmareSolved int
 	}
 
 	mysteryRepository struct {
@@ -524,13 +570,21 @@ func (r *mysteryRepository) GetLeaderboard(ctx context.Context, limit int) ([]Le
 	}
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT u.id, u.username, u.display_name, u.avatar_url, COALESCE(r.role, ''),
-			COUNT(m.id) AS solved_count
+			SUM(CASE WHEN m.difficulty = 'easy' THEN 2
+			         WHEN m.difficulty = 'medium' THEN 4
+			         WHEN m.difficulty = 'hard' THEN 6
+			         WHEN m.difficulty = 'nightmare' THEN 8
+			         ELSE 4 END) AS score,
+			SUM(CASE WHEN m.difficulty = 'easy' THEN 1 ELSE 0 END) AS easy_solved,
+			SUM(CASE WHEN m.difficulty = 'medium' THEN 1 ELSE 0 END) AS medium_solved,
+			SUM(CASE WHEN m.difficulty = 'hard' THEN 1 ELSE 0 END) AS hard_solved,
+			SUM(CASE WHEN m.difficulty = 'nightmare' THEN 1 ELSE 0 END) AS nightmare_solved
 		FROM mysteries m
 		JOIN users u ON m.winner_id = u.id
 		LEFT JOIN user_roles r ON r.user_id = u.id
 		WHERE m.solved = 1 AND m.winner_id IS NOT NULL
 		GROUP BY u.id
-		ORDER BY solved_count DESC, u.display_name ASC
+		ORDER BY score DESC, u.display_name ASC
 		LIMIT ?`, limit,
 	)
 	if err != nil {
@@ -541,10 +595,275 @@ func (r *mysteryRepository) GetLeaderboard(ctx context.Context, limit int) ([]Le
 	var result []LeaderboardEntry
 	for rows.Next() {
 		var e LeaderboardEntry
-		if err := rows.Scan(&e.UserID, &e.Username, &e.DisplayName, &e.AvatarURL, &e.Role, &e.SolvedCount); err != nil {
+		if err := rows.Scan(&e.UserID, &e.Username, &e.DisplayName, &e.AvatarURL, &e.Role,
+			&e.Score, &e.EasySolved, &e.MediumSolved, &e.HardSolved, &e.NightmareSolved); err != nil {
 			return nil, fmt.Errorf("scan leaderboard entry: %w", err)
 		}
 		result = append(result, e)
+	}
+	return result, rows.Err()
+}
+
+func (r *mysteryRepository) GetTopDetectiveID(ctx context.Context) (string, error) {
+	var userID string
+	err := r.db.QueryRowContext(ctx,
+		`SELECT m.winner_id
+		FROM mysteries m
+		WHERE m.solved = 1 AND m.winner_id IS NOT NULL
+		GROUP BY m.winner_id
+		ORDER BY SUM(CASE WHEN m.difficulty = 'easy' THEN 2
+		                  WHEN m.difficulty = 'medium' THEN 4
+		                  WHEN m.difficulty = 'hard' THEN 6
+		                  WHEN m.difficulty = 'nightmare' THEN 8
+		                  ELSE 4 END) DESC
+		LIMIT 1`,
+	).Scan(&userID)
+	if err != nil {
+		return "", err
+	}
+	return userID, nil
+}
+
+func (r *MysteryCommentRow) ToResponse(media []MysteryCommentMediaRow) dto.MysteryCommentResponse {
+	mediaList := make([]dto.PostMediaResponse, len(media))
+	for i, m := range media {
+		mediaList[i] = dto.PostMediaResponse{
+			ID:           m.ID,
+			MediaURL:     m.MediaURL,
+			MediaType:    m.MediaType,
+			ThumbnailURL: m.ThumbnailURL,
+			SortOrder:    m.SortOrder,
+		}
+	}
+	return dto.MysteryCommentResponse{
+		ID:       r.ID,
+		ParentID: r.ParentID,
+		Author: dto.UserResponse{
+			ID:          r.UserID,
+			Username:    r.AuthorUsername,
+			DisplayName: r.AuthorDisplayName,
+			AvatarURL:   r.AuthorAvatarURL,
+			Role:        role.Role(r.AuthorRole),
+		},
+		Body:      r.Body,
+		Media:     mediaList,
+		LikeCount: r.LikeCount,
+		UserLiked: r.UserLiked,
+		CreatedAt: r.CreatedAt,
+		UpdatedAt: r.UpdatedAt,
+	}
+}
+
+func (r *mysteryRepository) CreateComment(ctx context.Context, id uuid.UUID, mysteryID uuid.UUID, parentID *uuid.UUID, userID uuid.UUID, body string) error {
+	_, err := r.db.ExecContext(ctx,
+		`INSERT INTO mystery_comments (id, mystery_id, parent_id, user_id, body) VALUES (?, ?, ?, ?, ?)`,
+		id, mysteryID, parentID, userID, body,
+	)
+	if err != nil {
+		return fmt.Errorf("create mystery comment: %w", err)
+	}
+	return nil
+}
+
+func (r *mysteryRepository) UpdateComment(ctx context.Context, id uuid.UUID, userID uuid.UUID, body string) error {
+	res, err := r.db.ExecContext(ctx,
+		`UPDATE mystery_comments SET body = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?`,
+		body, id, userID,
+	)
+	if err != nil {
+		return fmt.Errorf("update mystery comment: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("comment not found or not owned")
+	}
+	return nil
+}
+
+func (r *mysteryRepository) UpdateCommentAsAdmin(ctx context.Context, id uuid.UUID, body string) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE mystery_comments SET body = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+		body, id,
+	)
+	if err != nil {
+		return fmt.Errorf("admin update mystery comment: %w", err)
+	}
+	return nil
+}
+
+func (r *mysteryRepository) DeleteComment(ctx context.Context, id uuid.UUID, userID uuid.UUID) error {
+	res, err := r.db.ExecContext(ctx, `DELETE FROM mystery_comments WHERE id = ? AND user_id = ?`, id, userID)
+	if err != nil {
+		return fmt.Errorf("delete mystery comment: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("comment not found or not owned")
+	}
+	return nil
+}
+
+func (r *mysteryRepository) DeleteCommentAsAdmin(ctx context.Context, id uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM mystery_comments WHERE id = ?`, id)
+	if err != nil {
+		return fmt.Errorf("admin delete mystery comment: %w", err)
+	}
+	return nil
+}
+
+func (r *mysteryRepository) GetComments(ctx context.Context, mysteryID uuid.UUID, viewerID uuid.UUID, excludeUserIDs []uuid.UUID) ([]MysteryCommentRow, error) {
+	exclSQL, exclArgs := ExcludeClause("c.user_id", excludeUserIDs)
+	args := []interface{}{viewerID, mysteryID}
+	args = append(args, exclArgs...)
+
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT c.id, c.mystery_id, c.parent_id, c.user_id, c.body, c.created_at, c.updated_at,
+			u.username, u.display_name, u.avatar_url, COALESCE(r.role, ''),
+			(SELECT COUNT(*) FROM mystery_comment_likes WHERE comment_id = c.id),
+			EXISTS(SELECT 1 FROM mystery_comment_likes WHERE comment_id = c.id AND user_id = ?)
+		FROM mystery_comments c
+		JOIN users u ON c.user_id = u.id
+		LEFT JOIN user_roles r ON r.user_id = u.id
+		WHERE c.mystery_id = ?`+exclSQL+`
+		ORDER BY c.created_at ASC`,
+		args...,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get mystery comments: %w", err)
+	}
+	defer rows.Close()
+
+	var comments []MysteryCommentRow
+	for rows.Next() {
+		var c MysteryCommentRow
+		if err := rows.Scan(
+			&c.ID, &c.MysteryID, &c.ParentID, &c.UserID, &c.Body, &c.CreatedAt, &c.UpdatedAt,
+			&c.AuthorUsername, &c.AuthorDisplayName, &c.AuthorAvatarURL, &c.AuthorRole,
+			&c.LikeCount, &c.UserLiked,
+		); err != nil {
+			return nil, fmt.Errorf("scan mystery comment: %w", err)
+		}
+		comments = append(comments, c)
+	}
+	return comments, rows.Err()
+}
+
+func (r *mysteryRepository) GetCommentMysteryID(ctx context.Context, commentID uuid.UUID) (uuid.UUID, error) {
+	var mysteryID uuid.UUID
+	err := r.db.QueryRowContext(ctx, `SELECT mystery_id FROM mystery_comments WHERE id = ?`, commentID).Scan(&mysteryID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("get mystery comment mystery id: %w", err)
+	}
+	return mysteryID, nil
+}
+
+func (r *mysteryRepository) GetCommentAuthorID(ctx context.Context, commentID uuid.UUID) (uuid.UUID, error) {
+	var userID uuid.UUID
+	err := r.db.QueryRowContext(ctx, `SELECT user_id FROM mystery_comments WHERE id = ?`, commentID).Scan(&userID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("get mystery comment author: %w", err)
+	}
+	return userID, nil
+}
+
+func (r *mysteryRepository) LikeComment(ctx context.Context, userID uuid.UUID, commentID uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx,
+		`INSERT OR IGNORE INTO mystery_comment_likes (user_id, comment_id) VALUES (?, ?)`,
+		userID, commentID,
+	)
+	if err != nil {
+		return fmt.Errorf("like mystery comment: %w", err)
+	}
+	return nil
+}
+
+func (r *mysteryRepository) UnlikeComment(ctx context.Context, userID uuid.UUID, commentID uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx,
+		`DELETE FROM mystery_comment_likes WHERE user_id = ? AND comment_id = ?`,
+		userID, commentID,
+	)
+	if err != nil {
+		return fmt.Errorf("unlike mystery comment: %w", err)
+	}
+	return nil
+}
+
+func (r *mysteryRepository) AddCommentMedia(ctx context.Context, commentID uuid.UUID, mediaURL string, mediaType string, thumbnailURL string, sortOrder int) (int64, error) {
+	res, err := r.db.ExecContext(ctx,
+		`INSERT INTO mystery_comment_media (comment_id, media_url, media_type, thumbnail_url, sort_order) VALUES (?, ?, ?, ?, ?)`,
+		commentID, mediaURL, mediaType, thumbnailURL, sortOrder,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("add mystery comment media: %w", err)
+	}
+	return res.LastInsertId()
+}
+
+func (r *mysteryRepository) UpdateCommentMediaURL(ctx context.Context, id int64, mediaURL string) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE mystery_comment_media SET media_url = ? WHERE id = ?`, mediaURL, id)
+	if err != nil {
+		return fmt.Errorf("update mystery comment media url: %w", err)
+	}
+	return nil
+}
+
+func (r *mysteryRepository) UpdateCommentMediaThumbnail(ctx context.Context, id int64, thumbnailURL string) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE mystery_comment_media SET thumbnail_url = ? WHERE id = ?`, thumbnailURL, id)
+	if err != nil {
+		return fmt.Errorf("update mystery comment media thumbnail: %w", err)
+	}
+	return nil
+}
+
+func (r *mysteryRepository) GetCommentMedia(ctx context.Context, commentID uuid.UUID) ([]MysteryCommentMediaRow, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, comment_id, media_url, media_type, thumbnail_url, sort_order FROM mystery_comment_media WHERE comment_id = ? ORDER BY sort_order`,
+		commentID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get mystery comment media: %w", err)
+	}
+	defer rows.Close()
+
+	var media []MysteryCommentMediaRow
+	for rows.Next() {
+		var m MysteryCommentMediaRow
+		if err := rows.Scan(&m.ID, &m.CommentID, &m.MediaURL, &m.MediaType, &m.ThumbnailURL, &m.SortOrder); err != nil {
+			return nil, fmt.Errorf("scan mystery comment media: %w", err)
+		}
+		media = append(media, m)
+	}
+	return media, rows.Err()
+}
+
+func (r *mysteryRepository) GetCommentMediaBatch(ctx context.Context, commentIDs []uuid.UUID) (map[uuid.UUID][]MysteryCommentMediaRow, error) {
+	if len(commentIDs) == 0 {
+		return nil, nil
+	}
+
+	placeholders := "?"
+	args := []interface{}{commentIDs[0]}
+	for _, id := range commentIDs[1:] {
+		placeholders += ",?"
+		args = append(args, id)
+	}
+
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, comment_id, media_url, media_type, thumbnail_url, sort_order FROM mystery_comment_media WHERE comment_id IN (`+placeholders+`) ORDER BY sort_order`,
+		args...,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("batch get mystery comment media: %w", err)
+	}
+	defer rows.Close()
+
+	result := make(map[uuid.UUID][]MysteryCommentMediaRow)
+	for rows.Next() {
+		var m MysteryCommentMediaRow
+		if err := rows.Scan(&m.ID, &m.CommentID, &m.MediaURL, &m.MediaType, &m.ThumbnailURL, &m.SortOrder); err != nil {
+			return nil, fmt.Errorf("scan mystery comment media: %w", err)
+		}
+		result[m.CommentID] = append(result[m.CommentID], m)
 	}
 	return result, rows.Err()
 }

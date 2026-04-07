@@ -16,6 +16,9 @@ import type {
     CreateResponsePayload,
     CreateTheoryPayload,
     DeleteAccountPayload,
+    FanficChapter,
+    FanficDetail,
+    FanficListResponse,
     FollowStats,
     Gallery,
     GalleryDetailResponse,
@@ -57,6 +60,7 @@ export interface SiteInfo {
     turnstile_site_key: string;
     max_image_size: number;
     max_video_size: number;
+    top_detective_id: string;
 }
 
 export async function getSiteInfo(): Promise<SiteInfo> {
@@ -104,6 +108,7 @@ export async function searchQuotes(params: {
     query?: string;
     character?: string;
     episode?: number;
+    arc?: string;
     truth?: string;
     lang?: string;
     limit?: number;
@@ -115,6 +120,7 @@ export async function searchQuotes(params: {
         q: params.query,
         character: params.character,
         episode: params.episode,
+        arc: params.arc,
         truth: params.truth,
         lang: series === "umineko" ? params.lang : undefined,
         limit: params.limit ?? 30,
@@ -456,6 +462,7 @@ export async function listPosts(params: {
     seed?: number;
     limit?: number;
     offset?: number;
+    resolved?: string;
 }): Promise<PostListResponse> {
     const qs = buildQueryString(params);
     return apiFetch<PostListResponse>(`/posts${qs}`);
@@ -488,6 +495,14 @@ export async function createPost(
 
 export async function votePoll(postId: string, optionId: number): Promise<Poll> {
     return apiPost<Poll, { option_id: number }>(`/posts/${postId}/poll/vote`, { option_id: optionId });
+}
+
+export async function resolveSuggestion(postId: string): Promise<void> {
+    await apiPost<unknown, Record<string, never>>(`/posts/${postId}/resolve`, {});
+}
+
+export async function unresolveSuggestion(postId: string): Promise<void> {
+    await apiDelete(`/posts/${postId}/resolve`);
 }
 
 export async function deletePost(id: string): Promise<void> {
@@ -856,6 +871,39 @@ export async function addMysteryClue(
     });
 }
 
+export async function createMysteryComment(
+    mysteryId: string,
+    body: string,
+    parentId?: string,
+): Promise<{ id: string }> {
+    return apiPost<{ id: string }, { body: string; parent_id?: string }>(`/mysteries/${mysteryId}/comments`, {
+        body,
+        parent_id: parentId,
+    });
+}
+
+export async function updateMysteryComment(id: string, body: string): Promise<void> {
+    await apiPut<unknown, { body: string }>(`/mystery-comments/${id}`, { body });
+}
+
+export async function deleteMysteryComment(id: string): Promise<void> {
+    await apiDelete(`/mystery-comments/${id}`);
+}
+
+export async function likeMysteryComment(id: string): Promise<void> {
+    await apiPost<unknown, Record<string, never>>(`/mystery-comments/${id}/like`, {});
+}
+
+export async function unlikeMysteryComment(id: string): Promise<void> {
+    await apiDelete(`/mystery-comments/${id}/like`);
+}
+
+export async function uploadMysteryCommentMedia(commentId: string, file: File): Promise<PostMedia> {
+    const formData = new FormData();
+    formData.append("media", file);
+    return apiPostFormData<PostMedia>(`/mystery-comments/${commentId}/media`, formData);
+}
+
 export async function getMysteryLeaderboard(limit?: number): Promise<MysteryLeaderboardResponse> {
     const qs = buildQueryString({ limit });
     return apiFetch<MysteryLeaderboardResponse>(`/mysteries/leaderboard${qs}`);
@@ -870,6 +918,182 @@ export async function getUserMysteries(userId: string, limit = 20, offset = 0): 
     const qs = buildQueryString({ limit, offset });
     return apiFetch<MysteryListResponse>(`/users/${userId}/mysteries${qs}`);
 }
+
+// Fanfiction
+
+export async function listFanfics(params: {
+    sort?: string;
+    series?: string;
+    rating?: string;
+    genre_a?: string;
+    genre_b?: string;
+    language?: string;
+    status?: string;
+    char_a?: string;
+    char_b?: string;
+    char_c?: string;
+    char_d?: string;
+    pairing?: boolean;
+    lemons?: boolean;
+    search?: string;
+    limit?: number;
+    offset?: number;
+}): Promise<FanficListResponse> {
+    const qs = buildQueryString({
+        sort: params.sort,
+        series: params.series,
+        rating: params.rating,
+        genre_a: params.genre_a,
+        genre_b: params.genre_b,
+        language: params.language,
+        status: params.status,
+        char_a: params.char_a,
+        char_b: params.char_b,
+        char_c: params.char_c,
+        char_d: params.char_d,
+        pairing: params.pairing ? "true" : undefined,
+        lemons: params.lemons ? "true" : undefined,
+        search: params.search,
+        limit: params.limit ?? 25,
+        offset: params.offset,
+    });
+    return apiFetch<FanficListResponse>(`/fanfics${qs}`);
+}
+
+export async function getFanfic(id: string): Promise<FanficDetail> {
+    return apiFetch<FanficDetail>(`/fanfics/${id}`);
+}
+
+export async function createFanfic(data: {
+    title: string;
+    summary: string;
+    series: string;
+    rating: string;
+    language: string;
+    status?: string;
+    is_oneshot: boolean;
+    contains_lemons: boolean;
+    genres: string[];
+    characters: { series: string; character_id?: string; character_name: string; sort_order: number }[];
+    is_pairing: boolean;
+    body?: string;
+}): Promise<{ id: string }> {
+    return apiPost<{ id: string }, typeof data>("/fanfics", data);
+}
+
+export async function updateFanfic(
+    id: string,
+    data: {
+        title: string;
+        summary: string;
+        series: string;
+        rating: string;
+        language: string;
+        status: string;
+        is_oneshot: boolean;
+        contains_lemons: boolean;
+        genres: string[];
+        characters: { series: string; character_id?: string; character_name: string; sort_order: number }[];
+        is_pairing: boolean;
+    },
+): Promise<void> {
+    await apiPut<unknown, typeof data>(`/fanfics/${id}`, data);
+}
+
+export async function deleteFanfic(id: string): Promise<void> {
+    await apiDelete(`/fanfics/${id}`);
+}
+
+export async function uploadFanficCover(fanficId: string, file: File): Promise<{ image_url: string }> {
+    const formData = new FormData();
+    formData.append("image", file);
+    return apiPostFormData<{ image_url: string }>(`/fanfics/${fanficId}/cover`, formData);
+}
+
+export async function deleteFanficCover(fanficId: string): Promise<void> {
+    await apiDelete(`/fanfics/${fanficId}/cover`);
+}
+
+export async function getFanficChapter(fanficId: string, chapterNumber: number): Promise<FanficChapter> {
+    return apiFetch<FanficChapter>(`/fanfics/${fanficId}/chapters/${chapterNumber}`);
+}
+
+export async function createFanficChapter(fanficId: string, title: string, body: string): Promise<{ id: string }> {
+    return apiPost<{ id: string }, { title: string; body: string }>(`/fanfics/${fanficId}/chapters`, { title, body });
+}
+
+export async function updateFanficChapter(chapterId: string, title: string, body: string): Promise<void> {
+    await apiPut<unknown, { title: string; body: string }>(`/fanfic-chapters/${chapterId}`, { title, body });
+}
+
+export async function deleteFanficChapter(chapterId: string): Promise<void> {
+    await apiDelete(`/fanfic-chapters/${chapterId}`);
+}
+
+export async function favouriteFanfic(id: string): Promise<void> {
+    await apiPost<unknown, Record<string, never>>(`/fanfics/${id}/favourite`, {});
+}
+
+export async function unfavouriteFanfic(id: string): Promise<void> {
+    await apiDelete(`/fanfics/${id}/favourite`);
+}
+
+export async function createFanficComment(fanficId: string, body: string, parentId?: string): Promise<{ id: string }> {
+    return apiPost<{ id: string }, { body: string; parent_id?: string }>(`/fanfics/${fanficId}/comments`, {
+        body,
+        parent_id: parentId,
+    });
+}
+
+export async function updateFanficComment(id: string, body: string): Promise<void> {
+    await apiPut<unknown, { body: string }>(`/fanfic-comments/${id}`, { body });
+}
+
+export async function deleteFanficComment(id: string): Promise<void> {
+    await apiDelete(`/fanfic-comments/${id}`);
+}
+
+export async function likeFanficComment(id: string): Promise<void> {
+    await apiPost<unknown, Record<string, never>>(`/fanfic-comments/${id}/like`, {});
+}
+
+export async function unlikeFanficComment(id: string): Promise<void> {
+    await apiDelete(`/fanfic-comments/${id}/like`);
+}
+
+export async function uploadFanficCommentMedia(commentId: string, file: File): Promise<PostMedia> {
+    const formData = new FormData();
+    formData.append("media", file);
+    return apiPostFormData<PostMedia>(`/fanfic-comments/${commentId}/media`, formData);
+}
+
+export async function getFanficLanguages(): Promise<string[]> {
+    const res = await apiFetch<{ languages: string[] }>("/fanfic-languages");
+    return res.languages;
+}
+
+export async function getFanficSeries(): Promise<string[]> {
+    const res = await apiFetch<{ series: string[] }>("/fanfic-series");
+    return res.series;
+}
+
+export async function searchOCCharacters(query: string): Promise<string[]> {
+    const qs = buildQueryString({ q: query });
+    const res = await apiFetch<{ characters: string[] }>(`/fanfic-oc-characters${qs}`);
+    return res.characters;
+}
+
+export async function getUserFanfics(userId: string, limit = 20, offset = 0): Promise<FanficListResponse> {
+    const qs = buildQueryString({ limit, offset });
+    return apiFetch<FanficListResponse>(`/users/${userId}/fanfics${qs}`);
+}
+
+export async function getUserFanficFavourites(userId: string, limit = 20, offset = 0): Promise<FanficListResponse> {
+    const qs = buildQueryString({ limit, offset });
+    return apiFetch<FanficListResponse>(`/users/${userId}/fanfic-favourites${qs}`);
+}
+
+// Announcements
 
 export async function createAnnouncementComment(
     announcementId: string,

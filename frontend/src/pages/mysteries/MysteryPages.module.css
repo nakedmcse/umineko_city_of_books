@@ -16,7 +16,7 @@
 
 .sidebar {
     position: sticky;
-    top: 1rem;
+    top: 4.25rem;
 }
 
 @media (max-width: 960px) {
@@ -62,6 +62,13 @@
     letter-spacing: 0.05em;
 }
 
+.leaderboardInfo {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin: 0 0 0.6rem;
+    line-height: 1.4;
+}
+
 .leaderboardEmpty {
     font-size: 0.85rem;
     color: var(--text-muted);
@@ -75,7 +82,7 @@
     margin: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: 0.15rem;
 }
 
 .leaderboardItem {
@@ -84,11 +91,64 @@
     gap: 0.6rem;
     font-size: 0.9rem;
     min-width: 0;
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 0.35rem 0.4rem;
+    border-radius: 4px;
+    cursor: pointer;
+    color: inherit;
+    font-family: inherit;
+    transition: background 0.15s ease;
 }
 
-.leaderboardItem > :nth-child(2) {
+.leaderboardItem:hover {
+    background: rgba(var(--gold-rgb), 0.08);
+}
+
+.leaderboardItemExpanded {
+    background: rgba(var(--gold-rgb), 0.06);
+}
+
+.leaderboardAvatar {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+}
+
+.leaderboardAvatar:hover {
+    opacity: 0.75;
+}
+
+.leaderboardAvatarImg {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+}
+
+.leaderboardAvatarPlaceholder {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(var(--purple-rgb), 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text);
+    font-size: 0.5rem;
+}
+
+.leaderboardName {
     min-width: 0;
     flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-display);
 }
 
 .leaderboardRank {
@@ -98,10 +158,62 @@
     min-width: 2rem;
 }
 
+.topDetectiveRow {
+    padding-left: 2.6rem;
+    margin-top: -0.15rem;
+    margin-bottom: 0.15rem;
+}
+
+.topDetectiveBadge {
+    display: inline-flex;
+    font-size: 0.55rem;
+    font-family: var(--font-display);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    white-space: nowrap;
+}
+
 .leaderboardScore {
     margin-left: auto;
     font-size: 0.8rem;
+    color: var(--gold-light);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.leaderboardBreakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.4rem 0.5rem 0.4rem 2.6rem;
+    font-size: 0.8rem;
+}
+
+.breakdownTotal {
     color: var(--text-muted);
+    margin-bottom: 0.15rem;
+    font-style: italic;
+}
+
+.breakdownRow {
+    display: flex;
+    justify-content: space-between;
+    color: var(--text-muted);
+}
+
+.breakdownLabel {
+    text-transform: capitalize;
+}
+
+.breakdownCount {
+    color: var(--text);
+    font-weight: 600;
 }
 
 .list {
@@ -111,6 +223,9 @@
 }
 
 .card {
+    display: block;
+    color: inherit;
+    text-decoration: none;
     background: var(--bg-card);
     border: 1px solid rgba(var(--purple-rgb), 0.3);
     border-radius: 8px;
@@ -127,18 +242,18 @@
     border-color: rgba(40, 167, 69, 0.4);
 }
 
-.cardHeader {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 0.5rem;
-}
-
 .cardTitle {
     font-family: var(--font-display);
     font-size: 1.05rem;
     color: var(--gold);
-    flex: 1;
+    margin-bottom: 0.35rem;
+}
+
+.cardBadges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0.35rem 0;
 }
 
 .badge {
@@ -176,6 +291,8 @@
     gap: 0.5rem;
     font-size: 0.8rem;
     color: var(--text-muted);
+    flex-wrap: wrap;
+    min-width: 0;
 }
 
 .cardStats {
@@ -198,7 +315,7 @@
 
 .cardPreview {
     color: var(--text-muted);
-    font-size: 0.9rem;
+    font-size: 1rem;
     margin-top: 0.5rem;
     line-height: 1.4;
 }
@@ -236,9 +353,7 @@
     gap: 0.75rem;
     font-size: 0.85rem;
     color: var(--text-muted);
-    margin-bottom: 1rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid rgba(var(--purple-rgb), 0.2);
+    flex-wrap: wrap;
 }
 
 .detailBody {
@@ -267,6 +382,34 @@
     border-radius: 0 4px 4px 0;
     color: #ef9a9a;
     font-style: italic;
+    position: relative;
+}
+
+.clueCopy {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.75rem;
+    padding: 0.2rem 0.35rem;
+    border-radius: 3px;
+    opacity: 0;
+    transition:
+        opacity 0.15s,
+        color 0.15s,
+        background 0.15s;
+}
+
+.clue:hover .clueCopy {
+    opacity: 1;
+}
+
+.clueCopy:hover {
+    color: var(--gold);
+    background: rgba(var(--gold-rgb), 0.12);
 }
 
 .cluePurple {
@@ -298,6 +441,14 @@
 
 .attemptsSection {
     margin-top: 1.5rem;
+}
+
+.discussionSection {
+    margin-top: 1.5rem;
+    background: var(--bg-card);
+    border: 1px solid rgba(var(--purple-rgb), 0.3);
+    border-radius: 8px;
+    padding: 1.25rem;
 }
 
 .pinnedWinner {

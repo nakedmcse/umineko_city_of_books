@@ -160,6 +160,7 @@ export interface UserStats {
     votes_received: number;
     ship_count: number;
     mystery_count: number;
+    fanfic_count: number;
 }
 
 export interface UpdateProfilePayload {
@@ -257,6 +258,7 @@ export interface Post {
     comment_count: number;
     view_count: number;
     user_liked: boolean;
+    resolved?: boolean;
     created_at: string;
     updated_at?: string;
 }
@@ -319,13 +321,18 @@ export type NotificationType =
     | "mystery_reply"
     | "mystery_attempt_vote"
     | "mystery_solved"
+    | "mystery_comment_reply"
+    | "fanfic_commented"
+    | "fanfic_comment_reply"
+    | "fanfic_favourited"
     | "ship_commented"
     | "ship_comment_reply"
     | "ship_comment_liked"
     | "announcement_commented"
     | "announcement_comment_reply"
     | "announcement_comment_liked"
-    | "suggestion_posted";
+    | "suggestion_posted"
+    | "suggestion_resolved";
 
 export interface Notification {
     id: number;
@@ -547,6 +554,19 @@ export interface MysteryAttempt {
     created_at: string;
 }
 
+export interface MysteryComment {
+    id: string;
+    parent_id?: string;
+    author: User;
+    body: string;
+    media: PostMedia[];
+    like_count: number;
+    user_liked: boolean;
+    replies?: MysteryComment[];
+    created_at: string;
+    updated_at?: string;
+}
+
 export interface MysteryDetail {
     id: string;
     title: string;
@@ -558,6 +578,7 @@ export interface MysteryDetail {
     solved_at?: string;
     clues: MysteryClue[];
     attempts: MysteryAttempt[];
+    comments: MysteryComment[];
     player_count: number;
     created_at: string;
 }
@@ -571,11 +592,82 @@ export interface MysteryListResponse {
 
 export interface MysteryLeaderboardEntry {
     user: User;
-    solved_count: number;
+    score: number;
+    easy_solved: number;
+    medium_solved: number;
+    hard_solved: number;
+    nightmare_solved: number;
 }
 
 export interface MysteryLeaderboardResponse {
     entries: MysteryLeaderboardEntry[];
+}
+
+export interface FanficCharacter {
+    series: string;
+    character_id?: string;
+    character_name: string;
+    sort_order: number;
+}
+
+export interface Fanfic {
+    id: string;
+    author: User;
+    title: string;
+    summary: string;
+    series: string;
+    rating: string;
+    language: string;
+    status: string;
+    is_oneshot: boolean;
+    contains_lemons: boolean;
+    cover_image_url?: string;
+    cover_thumbnail_url?: string;
+    genres: string[];
+    characters: FanficCharacter[];
+    is_pairing: boolean;
+    word_count: number;
+    chapter_count: number;
+    favourite_count: number;
+    view_count: number;
+    comment_count: number;
+    user_favourited: boolean;
+    published_at: string;
+    created_at: string;
+    updated_at?: string;
+}
+
+export interface FanficChapterSummary {
+    id: string;
+    chapter_number: number;
+    title: string;
+    word_count: number;
+}
+
+export interface FanficChapter {
+    id: string;
+    chapter_number: number;
+    title: string;
+    body: string;
+    word_count: number;
+    has_prev: boolean;
+    has_next: boolean;
+    created_at: string;
+    updated_at?: string;
+}
+
+export interface FanficDetail extends Fanfic {
+    chapters: FanficChapterSummary[];
+    comments: PostComment[];
+    reading_progress: number;
+    viewer_blocked: boolean;
+}
+
+export interface FanficListResponse {
+    fanfics: Fanfic[];
+    total: number;
+    limit: number;
+    offset: number;
 }
 
 export interface Announcement {

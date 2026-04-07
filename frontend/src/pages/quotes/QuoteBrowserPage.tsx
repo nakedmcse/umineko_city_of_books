@@ -17,28 +17,6 @@ const TRUTH_COLOURS: Record<string, { base: string; active: string }> = {
     purple: { base: styles.filterBtnPurple, active: styles.filterBtnPurpleActive },
 };
 
-const HIGURASHI_ARCS: { value: string; label: string }[] = [
-    { value: "onikakushi", label: "Onikakushi" },
-    { value: "watanagashi", label: "Watanagashi" },
-    { value: "tatarigoroshi", label: "Tatarigoroshi" },
-    { value: "himatsubushi", label: "Himatsubushi" },
-    { value: "meakashi", label: "Meakashi" },
-    { value: "tsumihoroboshi", label: "Tsumihoroboshi" },
-    { value: "minagoroshi", label: "Minagoroshi" },
-    { value: "matsuribayashi", label: "Matsuribayashi" },
-    { value: "someutsushi", label: "Someutsushi" },
-    { value: "kageboshi", label: "Kageboshi" },
-    { value: "tsukiotoshi", label: "Tsukiotoshi" },
-    { value: "taraimawashi", label: "Taraimawashi" },
-    { value: "yoigoshi", label: "Yoigoshi" },
-    { value: "tokihogushi", label: "Tokihogushi" },
-    { value: "miotsukushi_omote", label: "Miotsukushi Omote" },
-    { value: "kakera", label: "Kakera" },
-    { value: "miotsukushi_ura", label: "Miotsukushi Ura" },
-    { value: "kotohogushi", label: "Kotohogushi" },
-    { value: "hajisarashi", label: "Hajisarashi" },
-];
-
 export function QuoteBrowserPage() {
     const [series, setSeries] = useState<Series>("umineko");
     const [episode, setEpisode] = useState(0);
@@ -94,7 +72,7 @@ export function QuoteBrowserPage() {
 
     useEffect(() => {
         setOffset(0);
-        void fetchQuotes(0);
+        fetchQuotes(0);
     }, [fetchQuotes]);
 
     function truthBtnClass(t: string): string {
@@ -157,7 +135,7 @@ export function QuoteBrowserPage() {
                 {series === "higurashi" && (
                     <Select value={arc} onChange={e => setArc((e.target as HTMLSelectElement).value)}>
                         <option value="">All Arcs</option>
-                        {HIGURASHI_ARCS.map(a => (
+                        {(cfg.arcs ?? []).map(a => (
                             <option key={a.value} value={a.value}>
                                 {a.label}
                             </option>
@@ -203,12 +181,12 @@ export function QuoteBrowserPage() {
                     onNext={() => {
                         const next = offset + limit;
                         setOffset(next);
-                        void fetchQuotes(next);
+                        fetchQuotes(next);
                     }}
                     onPrev={() => {
                         const prev = Math.max(0, offset - limit);
                         setOffset(prev);
-                        void fetchQuotes(prev);
+                        fetchQuotes(prev);
                     }}
                 />
             )}

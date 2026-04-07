@@ -4,7 +4,7 @@ import type { ShipCharacter } from "../../types/api";
 import { createShip, uploadShipImage } from "../../api/endpoints";
 import { Button } from "../../components/Button/Button";
 import { Input } from "../../components/Input/Input";
-import { CharacterPicker } from "./CharacterPicker";
+import { CharacterPicker } from "../../components/CharacterPicker/CharacterPicker";
 import styles from "./ShipPages.module.css";
 
 export function CreateShipPage() {

@@ -24,6 +24,7 @@ type (
 		UpdateProfile(ctx context.Context, userID uuid.UUID, req dto.UpdateProfileRequest) error
 		UpdateAvatarURL(ctx context.Context, userID uuid.UUID, avatarURL string) error
 		UpdateBannerURL(ctx context.Context, userID uuid.UUID, bannerURL string) error
+		UpdateIP(ctx context.Context, userID uuid.UUID, ip string) error
 		ChangePassword(ctx context.Context, userID uuid.UUID, oldPassword, newPassword string) error
 		DeleteAccount(ctx context.Context, userID uuid.UUID, password string) error
 		GetProfileByUsername(ctx context.Context, username string) (*model.User, *model.UserStats, error)
@@ -181,6 +182,16 @@ func (r *userRepository) UpdateBannerURL(ctx context.Context, userID uuid.UUID, 
 	return nil
 }
 
+func (r *userRepository) UpdateIP(ctx context.Context, userID uuid.UUID, ip string) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE users SET ip = ? WHERE id = ?`, ip, userID,
+	)
+	if err != nil {
+		return fmt.Errorf("update ip: %w", err)
+	}
+	return nil
+}
+
 func (r *userRepository) ChangePassword(ctx context.Context, userID uuid.UUID, oldPassword, newPassword string) error {
 	u, err := r.GetByID(ctx, userID)
 	if err != nil {
@@ -264,6 +275,10 @@ func (r *userRepository) GetProfileByUsername(ctx context.Context, username stri
 		`SELECT COUNT(*) FROM mysteries WHERE user_id = ?`, u.ID,
 	).Scan(&stats.MysteryCount)
 
+	r.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM fanfics WHERE user_id = ?`, u.ID,
+	).Scan(&stats.FanficCount)
+
 	return u, &stats, nil
 }
 
@@ -289,6 +304,10 @@ func (r *userRepository) GetProfileByID(ctx context.Context, id uuid.UUID) (*mod
 	r.db.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM mysteries WHERE user_id = ?`, u.ID,
 	).Scan(&stats.MysteryCount)
+
+	r.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM fanfics WHERE user_id = ?`, u.ID,
+	).Scan(&stats.FanficCount)
 
 	return u, &stats, nil
 }

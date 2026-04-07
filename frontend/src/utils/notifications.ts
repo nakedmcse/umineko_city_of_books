@@ -70,6 +70,17 @@ function routeByReferenceType(notif: Notification): string {
         const attemptId = refType.split(":")[1];
         return `/mystery/${notif.reference_id}#attempt-${attemptId}`;
     }
+    if (refType.startsWith("mystery_comment:")) {
+        const commentId = refType.split(":")[1];
+        return `/mystery/${notif.reference_id}#comment-${commentId}`;
+    }
+    if (refType === "fanfic") {
+        return `/fanfiction/${notif.reference_id}`;
+    }
+    if (refType.startsWith("fanfic_comment:")) {
+        const commentId = refType.split(":")[1];
+        return `/fanfiction/${notif.reference_id}#comment-${commentId}`;
+    }
     if (refType === "ship" || refType.startsWith("ship_comment:")) {
         const parts = refType.split(":");
         if (parts.length === 2) {
@@ -213,6 +224,26 @@ const notificationConfigs: Record<NotificationType, NotificationConfig> = {
         category: "mysteries_player",
         route: routeByReferenceType,
     },
+    mystery_comment_reply: {
+        text: "replied to your comment on a mystery",
+        category: "mysteries_player",
+        route: routeByReferenceType,
+    },
+    fanfic_commented: {
+        text: "commented on your fanfic",
+        category: "social",
+        route: routeByReferenceType,
+    },
+    fanfic_comment_reply: {
+        text: "replied to your comment on a fanfic",
+        category: "social",
+        route: routeByReferenceType,
+    },
+    fanfic_favourited: {
+        text: "favourited your fanfic",
+        category: "social",
+        route: routeByReferenceType,
+    },
     ship_commented: {
         text: "commented on your ship",
         category: "social",
@@ -245,6 +276,11 @@ const notificationConfigs: Record<NotificationType, NotificationConfig> = {
     },
     suggestion_posted: {
         text: "posted a site suggestion",
+        category: "site_improvements",
+        route: notif => `/suggestions/${notif.reference_id}`,
+    },
+    suggestion_resolved: {
+        text: "marked your suggestion as done",
         category: "site_improvements",
         route: notif => `/suggestions/${notif.reference_id}`,
     },

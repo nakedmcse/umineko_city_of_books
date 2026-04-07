@@ -34,6 +34,11 @@ import { MysteryListPage } from "./pages/mysteries/MysteryListPage";
 import { MysteryDetailPage } from "./pages/mysteries/MysteryDetailPage";
 import { CreateMysteryPage } from "./pages/mysteries/CreateMysteryPage";
 import { ShipsListPage } from "./pages/ships/ShipsListPage";
+import { FanfictionListPage } from "./pages/fanfiction/FanfictionListPage";
+import { FanficDetailPage } from "./pages/fanfiction/FanficDetailPage";
+import { FanficChapterPage } from "./pages/fanfiction/FanficChapterPage";
+import { FanficEditorPage } from "./pages/fanfiction/FanficEditorPage";
+import { ChapterEditorPage } from "./pages/fanfiction/ChapterEditorPage";
 import { ShipDetailPage } from "./pages/ships/ShipDetailPage";
 import { CreateShipPage } from "./pages/ships/CreateShipPage";
 import { SuggestionsPage } from "./pages/suggestions/SuggestionsPage";
@@ -61,6 +66,7 @@ const homePageRoutes: Record<string, string> = {
     quotes: "/quotes",
     mysteries: "/mysteries",
     ships: "/ships",
+    fanfiction: "/fanfiction",
 };
 
 function HomePage() {
@@ -128,6 +134,9 @@ function AppLayout() {
                         <Route path="/mystery/:id" element={<MysteryDetailPage />} />
                         <Route path="/ships" element={<ShipsListPage />} />
                         <Route path="/ships/:id" element={<ShipDetailPage />} />
+                        <Route path="/fanfiction" element={<FanfictionListPage />} />
+                        <Route path="/fanfiction/:id" element={<FanficDetailPage />} />
+                        <Route path="/fanfiction/:id/chapter/:number" element={<FanficChapterPage />} />
                         <Route path="/quotes" element={<QuoteBrowserPage />} />
                         <Route path="/users" element={<UsersPage />} />
                         <Route path="/user/:username" element={<ProfilePage />} />
@@ -139,6 +148,10 @@ function AppLayout() {
                             <Route path="/theory/higurashi/new" element={<CreateTheoryPage series="higurashi" />} />
                             <Route path="/mystery/new" element={<CreateMysteryPage />} />
                             <Route path="/ships/new" element={<CreateShipPage />} />
+                            <Route path="/fanfiction/new" element={<FanficEditorPage />} />
+                            <Route path="/fanfiction/:id/edit" element={<FanficEditorPage />} />
+                            <Route path="/fanfiction/:id/chapter/new" element={<ChapterEditorPage />} />
+                            <Route path="/fanfiction/:id/chapter/:number/edit" element={<ChapterEditorPage />} />
                             <Route path="/theory/:id/edit" element={<EditTheoryPage />} />
                             <Route path="/my-theories" element={<MyTheoriesPage />} />
                             <Route path="/settings" element={<SettingsPage />} />

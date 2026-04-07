@@ -22,7 +22,7 @@ import { ProfileLink } from "../../components/ProfileLink/ProfileLink";
 import { CommentItem } from "../../components/post/CommentItem/CommentItem";
 import { CommentComposer } from "../../components/post/CommentComposer/CommentComposer";
 import { relativeTime } from "../../utils/notifications";
-import { CharacterPicker } from "./CharacterPicker";
+import { CharacterPicker } from "../../components/CharacterPicker/CharacterPicker";
 import { CharacterPills } from "./ShipsListPage";
 import styles from "./ShipPages.module.css";
 
