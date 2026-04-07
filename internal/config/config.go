@@ -71,6 +71,7 @@ var (
 	SettingRulesGalleryUmineko     = SiteSettingDef{"rules_gallery_umineko", "", TypeString}
 	SettingRulesGalleryHigurashi   = SiteSettingDef{"rules_gallery_higurashi", "", TypeString}
 	SettingRulesGalleryCiconia     = SiteSettingDef{"rules_gallery_ciconia", "", TypeString}
+	SettingRulesFanfiction         = SiteSettingDef{"rules_fanfiction", "", TypeString}
 	SettingSMTPHost                = SiteSettingDef{"smtp_host", "", TypeString}
 	SettingSMTPPort                = SiteSettingDef{"smtp_port", "25", TypeInt}
 	SettingSMTPFrom                = SiteSettingDef{"smtp_from", "", TypeString}

@@ -239,6 +239,7 @@ var rulesSettings = map[string]config.SiteSettingDef{
 	"gallery_umineko":      config.SettingRulesGalleryUmineko,
 	"gallery_higurashi":    config.SettingRulesGalleryHigurashi,
 	"gallery_ciconia":      config.SettingRulesGalleryCiconia,
+	"fanfiction":           config.SettingRulesFanfiction,
 }
 
 func (s *Service) getRules(ctx fiber.Ctx) error {
