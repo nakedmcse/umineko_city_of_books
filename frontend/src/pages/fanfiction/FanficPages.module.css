@@ -93,11 +93,14 @@
 }
 
 .cardCover {
-    width: 80px;
-    height: 110px;
-    object-fit: cover;
+    max-width: 100px;
+    max-height: 120px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
     border-radius: 4px;
     flex-shrink: 0;
+    align-self: center;
 }
 
 .cardContent {
@@ -224,9 +227,11 @@
 }
 
 .detailCover {
-    width: 180px;
-    height: 260px;
-    object-fit: cover;
+    max-width: 220px;
+    max-height: 320px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
     border-radius: 6px;
     cursor: zoom-in;
     flex-shrink: 0;
@@ -624,8 +629,8 @@
     }
 
     .detailCover {
-        width: 140px;
-        height: 200px;
+        max-width: 160px;
+        max-height: 220px;
     }
 
     .detailTitleRow {
