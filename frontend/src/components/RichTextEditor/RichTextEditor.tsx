@@ -1,7 +1,6 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
 import TextAlign from "@tiptap/extension-text-align";
 import styles from "./RichTextEditor.module.css";
@@ -16,6 +15,7 @@ function ToolbarButton({ onClick, active, label }: { onClick: () => void; active
     return (
         <button
             type="button"
+            tabIndex={-1}
             className={`${styles.toolbarBtn}${active ? ` ${styles.toolbarBtnActive}` : ""}`}
             onMouseDown={e => {
                 e.preventDefault();
@@ -32,14 +32,16 @@ function Separator() {
 }
 
 export function RichTextEditor({ content, onChange, placeholder = "Write your story..." }: RichTextEditorProps) {
+    const [, forceRender] = useState(0);
     const editor = useEditor({
+        immediatelyRender: false,
         extensions: [
             StarterKit.configure({
                 heading: { levels: [2, 3] },
-            }),
-            Link.configure({
-                openOnClick: false,
-                HTMLAttributes: { rel: "noopener noreferrer nofollow", target: "_blank" },
+                link: {
+                    openOnClick: false,
+                    HTMLAttributes: { rel: "noopener noreferrer nofollow", target: "_blank" },
+                },
             }),
             Placeholder.configure({ placeholder }),
             TextAlign.configure({ types: ["heading", "paragraph"] }),
@@ -47,6 +49,9 @@ export function RichTextEditor({ content, onChange, placeholder = "Write your st
         content,
         onUpdate: ({ editor: e }) => {
             onChange(e.getHTML());
+        },
+        onTransaction: () => {
+            forceRender(n => n + 1);
         },
     });
 
