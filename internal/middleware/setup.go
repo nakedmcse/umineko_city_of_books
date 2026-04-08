@@ -20,11 +20,7 @@ import (
 func Setup(app *fiber.App, settingsSvc settings.Service, sessionMgr *session.Manager, authzSvc authz.Service) {
 	app.Server().MaxRequestBodySize = settingsSvc.GetInt(context.Background(), config.SettingMaxBodySize)
 
-	app.Use(etag.New(etag.Config{
-		Next: func(ctx fiber.Ctx) bool {
-			return strings.HasPrefix(ctx.Path(), "/uploads/")
-		},
-	}))
+	app.Use(etag.New())
 
 	app.Use(func(ctx fiber.Ctx) error {
 		path := ctx.Path()
@@ -35,7 +31,13 @@ func Setup(app *fiber.App, settingsSvc settings.Service, sessionMgr *session.Man
 		case strings.HasPrefix(path, "/static/assets/") || strings.HasPrefix(path, "/assets/"):
 			ctx.Set("Cache-Control", "public, max-age=31536000, immutable")
 		case strings.HasPrefix(path, "/uploads/"):
-			ctx.Set("Cache-Control", "public, max-age=2592000")
+			contentType := string(ctx.Response().Header.ContentType())
+			if strings.HasPrefix(contentType, "video/") {
+				ctx.Set("Cache-Control", "no-cache, no-transform")
+				ctx.Set("Accept-Ranges", "bytes")
+			} else {
+				ctx.Set("Cache-Control", "public, max-age=2592000")
+			}
 		case strings.HasPrefix(path, "/api"):
 			ctx.Set("Cache-Control", "no-cache, must-revalidate")
 		default:
