@@ -20,7 +20,11 @@ import (
 func Setup(app *fiber.App, settingsSvc settings.Service, sessionMgr *session.Manager, authzSvc authz.Service) {
 	app.Server().MaxRequestBodySize = settingsSvc.GetInt(context.Background(), config.SettingMaxBodySize)
 
-	app.Use(etag.New())
+	app.Use(etag.New(etag.Config{
+		Next: func(ctx fiber.Ctx) bool {
+			return strings.HasPrefix(ctx.Path(), "/uploads/")
+		},
+	}))
 
 	app.Use(func(ctx fiber.Ctx) error {
 		path := ctx.Path()
