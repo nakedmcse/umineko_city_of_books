@@ -234,6 +234,11 @@ func initApp(svc *services, repos *repository.Repositories, settingsSvc settings
 	app.Get("/uploads/*", func(ctx fiber.Ctx) error {
 		filePath := filepath.Join(svc.upload.GetUploadDir(), ctx.Params("*"))
 		fasthttp.ServeFile(ctx.RequestCtx(), filePath)
+		ct := string(ctx.RequestCtx().Response.Header.ContentType())
+		if strings.HasPrefix(ct, "video/") {
+			ctx.RequestCtx().Response.Header.Set("Cache-Control", "no-cache, no-transform")
+			ctx.RequestCtx().Response.Header.Set("Accept-Ranges", "bytes")
+		}
 		return nil
 	})
 
