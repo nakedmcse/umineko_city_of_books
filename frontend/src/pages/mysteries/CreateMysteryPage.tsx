@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useAuth } from "../../hooks/useAuth";
+import { usePageTitle } from "../../hooks/usePageTitle";
 import { createMystery, getMystery, updateMystery, uploadMysteryAttachment } from "../../api/endpoints";
 import { Button } from "../../components/Button/Button";
 import { Input } from "../../components/Input/Input";
@@ -8,6 +9,7 @@ import { TextArea } from "../../components/TextArea/TextArea";
 import { Select } from "../../components/Select/Select";
 import { InfoPanel } from "../../components/InfoPanel/InfoPanel";
 import { ErrorBanner } from "../../components/ErrorBanner/ErrorBanner";
+import { ToggleSwitch } from "../../components/ToggleSwitch/ToggleSwitch";
 import styles from "./MysteryPages.module.css";
 
 interface ClueInput {
@@ -18,11 +20,13 @@ interface ClueInput {
 export function CreateMysteryPage() {
     const { id: editId } = useParams<{ id: string }>();
     const isEdit = !!editId;
+    usePageTitle(isEdit ? "Edit Mystery" : "New Mystery");
     const navigate = useNavigate();
     const { user, loading: authLoading } = useAuth();
     const [title, setTitle] = useState("");
     const [body, setBody] = useState("");
     const [difficulty, setDifficulty] = useState("medium");
+    const [freeForAll, setFreeForAll] = useState(false);
     const [clues, setClues] = useState<ClueInput[]>([{ body: "", truth_type: "red" }]);
     const [attachments, setAttachments] = useState<File[]>([]);
     const attachmentInputRef = useRef<HTMLInputElement>(null);
@@ -45,6 +49,7 @@ export function CreateMysteryPage() {
                 setTitle(data.title);
                 setBody(data.body);
                 setDifficulty(data.difficulty);
+                setFreeForAll(data.free_for_all);
                 const gmClues = (data.clues ?? []).filter(c => !c.player_id);
                 if (gmClues.length > 0) {
                     setClues(gmClues.map(c => ({ body: c.body, truth_type: c.truth_type })));
@@ -86,6 +91,7 @@ export function CreateMysteryPage() {
                     title: title.trim(),
                     body: body.trim(),
                     difficulty,
+                    free_for_all: freeForAll,
                     clues: validClues,
                 });
                 for (const file of attachments) {
@@ -99,6 +105,7 @@ export function CreateMysteryPage() {
                     title: title.trim(),
                     body: body.trim(),
                     difficulty,
+                    free_for_all: freeForAll,
                     clues: validClues,
                 });
                 for (const file of attachments) {
@@ -174,6 +181,15 @@ export function CreateMysteryPage() {
                     <option value="hard">Hard</option>
                     <option value="nightmare">Nightmare</option>
                 </Select>
+
+                <div style={{ marginTop: "1rem" }}>
+                    <ToggleSwitch
+                        enabled={freeForAll}
+                        onChange={setFreeForAll}
+                        label="Free-for-all mode"
+                        description="All players can see each other's attempts. By default, each player only sees their own thread with the Game Master."
+                    />
+                </div>
 
                 <h3 className={styles.cluesTitle} style={{ marginTop: "1.5rem" }}>
                     Red Truths (Clues)

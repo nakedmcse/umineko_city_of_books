@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
+import { usePageTitle } from "../../hooks/usePageTitle";
 import type { ArtDetail } from "../../types/api";
 import {
     createArtComment,
@@ -24,6 +25,8 @@ import { CommentComposer } from "../../components/post/CommentComposer/CommentCo
 import { CommentItem } from "../../components/post/CommentItem/CommentItem";
 import { MentionTextArea } from "../../components/MentionTextArea/MentionTextArea";
 import { TagInput } from "../../components/art/TagInput/TagInput";
+import { SpoilerImage } from "../../components/SpoilerImage/SpoilerImage";
+import { ToggleSwitch } from "../../components/ToggleSwitch/ToggleSwitch";
 import { ReportButton } from "../../components/ReportButton/ReportButton";
 import { ShareButton } from "../../components/ShareButton/ShareButton";
 import styles from "./ArtDetailPage.module.css";
@@ -34,6 +37,7 @@ export function ArtDetailPage() {
     const location = useLocation();
     const { user } = useAuth();
     const [art, setArt] = useState<ArtDetail | null>(null);
+    usePageTitle(art?.title ?? "Art");
     const [loading, setLoading] = useState(true);
     const [liked, setLiked] = useState(false);
     const [likeCount, setLikeCount] = useState(0);
@@ -41,6 +45,7 @@ export function ArtDetailPage() {
     const [editTitle, setEditTitle] = useState("");
     const [editDesc, setEditDesc] = useState("");
     const [editTags, setEditTags] = useState<string[]>([]);
+    const [editSpoiler, setEditSpoiler] = useState(false);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [lightboxOpen, setLightboxOpen] = useState(false);
 
@@ -113,6 +118,7 @@ export function ArtDetailPage() {
         setEditTitle(art.title);
         setEditDesc(art.description);
         setEditTags([...art.tags]);
+        setEditSpoiler(art.is_spoiler);
         setEditing(true);
     }
 
@@ -124,6 +130,7 @@ export function ArtDetailPage() {
             title: editTitle.trim(),
             description: editDesc.trim(),
             tags: editTags,
+            is_spoiler: editSpoiler,
         });
         setEditing(false);
         fetchArt();
@@ -147,14 +154,14 @@ export function ArtDetailPage() {
                 &larr; Back to Gallery
             </span>
 
-            <div className={styles.imageSection}>
-                <img
-                    src={art.image_url}
-                    alt={art.title}
-                    className={styles.fullImage}
-                    onClick={() => setLightboxOpen(true)}
-                />
-            </div>
+            <SpoilerImage
+                src={art.image_url}
+                alt={art.title}
+                isSpoiler={art.is_spoiler}
+                className={styles.imageSection}
+                imageClassName={styles.fullImage}
+                onClick={() => setLightboxOpen(true)}
+            />
 
             <div className={styles.detailCard}>
                 {editing ? (
@@ -167,6 +174,12 @@ export function ArtDetailPage() {
                         />
                         <MentionTextArea value={editDesc} onChange={setEditDesc} placeholder="Description" rows={3} />
                         <TagInput tags={editTags} onChange={setEditTags} />
+                        <ToggleSwitch
+                            enabled={editSpoiler}
+                            onChange={setEditSpoiler}
+                            label="Contains spoilers"
+                            description="Image will be blurred until clicked"
+                        />
                         <div className={styles.editActions}>
                             <Button variant="secondary" size="small" onClick={() => setEditing(false)}>
                                 Cancel

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
+import { usePageTitle } from "../../hooks/usePageTitle";
 import type { FanficChapter, FanficDetail } from "../../types/api";
 import { getFanfic, getFanficChapter } from "../../api/endpoints";
 import { Button } from "../../components/Button/Button";
@@ -21,6 +22,7 @@ export function FanficChapterPage() {
     const [chapter, setChapter] = useState<FanficChapter | null>(null);
     const [fanfic, setFanfic] = useState<FanficDetail | null>(null);
     const [loading, setLoading] = useState(true);
+    usePageTitle(chapter?.title || (chapter ? `Chapter ${chapter.chapter_number}` : "Chapter"));
 
     const chapterNumber = Number(numParam);
 
@@ -62,7 +64,10 @@ export function FanficChapterPage() {
                     variant="secondary"
                     size="small"
                     disabled={!chapter!.has_prev}
-                    onClick={() => navigate(`/fanfiction/${fanficId}/chapter/${chapterNumber - 1}`)}
+                    onClick={() => {
+                        navigate(`/fanfiction/${fanficId}/chapter/${chapterNumber - 1}`);
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
                 >
                     &larr; Previous
                 </Button>
@@ -70,7 +75,10 @@ export function FanficChapterPage() {
                     variant="secondary"
                     size="small"
                     disabled={!chapter!.has_next}
-                    onClick={() => navigate(`/fanfiction/${fanficId}/chapter/${chapterNumber + 1}`)}
+                    onClick={() => {
+                        navigate(`/fanfiction/${fanficId}/chapter/${chapterNumber + 1}`);
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
                 >
                     Next &rarr;
                 </Button>
