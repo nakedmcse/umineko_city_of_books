@@ -885,6 +885,18 @@ export async function markMysterySolved(mysteryId: string, attemptId: string): P
     await apiPost<unknown, { attempt_id: string }>(`/mysteries/${mysteryId}/solve`, { attempt_id: attemptId });
 }
 
+export async function setMysteryPaused(mysteryId: string, paused: boolean): Promise<void> {
+    await apiPost<unknown, { paused: boolean }>(`/mysteries/${mysteryId}/pause`, { paused });
+}
+
+export async function deleteMysteryClue(mysteryId: string, clueId: number): Promise<void> {
+    await apiDelete(`/mysteries/${mysteryId}/clues/${clueId}`);
+}
+
+export async function updateMysteryClue(mysteryId: string, clueId: number, body: string): Promise<void> {
+    await apiPut<unknown, { body: string }>(`/mysteries/${mysteryId}/clues/${clueId}`, { body });
+}
+
 export async function addMysteryClue(
     mysteryId: string,
     body: string,

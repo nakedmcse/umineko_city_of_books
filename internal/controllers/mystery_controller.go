@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"umineko_city_of_books/internal/authz"
 	"umineko_city_of_books/internal/block"
 	"umineko_city_of_books/internal/dto"
 	"umineko_city_of_books/internal/middleware"
@@ -44,6 +45,9 @@ func (s *Service) getAllMysteryRoutes() []FSetupRoute {
 		s.setupUploadMysteryCommentMedia,
 		s.setupUploadMysteryAttachment,
 		s.setupDeleteMysteryAttachment,
+		s.setupToggleMysteryPause,
+		s.setupDeleteMysteryClue,
+		s.setupUpdateMysteryClue,
 	}
 }
 
@@ -205,7 +209,7 @@ func (s *Service) createAttempt(ctx fiber.Ctx) error {
 		if errors.Is(err, mysterysvc.ErrNotFound) {
 			return ctx.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "mystery not found"})
 		}
-		if errors.Is(err, mysterysvc.ErrAlreadySolved) || errors.Is(err, mysterysvc.ErrCannotReply) || errors.Is(err, block.ErrUserBlocked) {
+		if errors.Is(err, mysterysvc.ErrAlreadySolved) || errors.Is(err, mysterysvc.ErrCannotReply) || errors.Is(err, mysterysvc.ErrMysteryPaused) || errors.Is(err, block.ErrUserBlocked) {
 			return ctx.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
 		}
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to create attempt"})
@@ -541,4 +545,89 @@ func (s *Service) deleteMysteryAttachment(ctx fiber.Ctx) error {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to delete attachment"})
 	}
 	return ctx.SendStatus(fiber.StatusNoContent)
+}
+
+func (s *Service) setupToggleMysteryPause(r fiber.Router) {
+	r.Post("/mysteries/:id/pause", middleware.RequireAuth(s.AuthSession, s.AuthzService), s.toggleMysteryPause)
+}
+
+func (s *Service) toggleMysteryPause(ctx fiber.Ctx) error {
+	mysteryID, err := uuid.Parse(ctx.Params("id"))
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid id"})
+	}
+	userID := ctx.Locals("userID").(uuid.UUID)
+
+	var req struct {
+		Paused bool `json:"paused"`
+	}
+	if err := ctx.Bind().JSON(&req); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request body"})
+	}
+
+	if err := s.MysteryService.SetPaused(ctx.Context(), mysteryID, userID, req.Paused); err != nil {
+		if errors.Is(err, mysterysvc.ErrNotFound) {
+			return ctx.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
+		}
+		if errors.Is(err, mysterysvc.ErrNotAuthor) {
+			return ctx.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
+		}
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to toggle pause"})
+	}
+	return ctx.JSON(fiber.Map{"status": "ok"})
+}
+
+func (s *Service) setupDeleteMysteryClue(r fiber.Router) {
+	r.Delete("/mysteries/:id/clues/:clueId", middleware.RequirePermission(s.AuthSession, s.AuthzService, authz.PermEditAnyTheory), s.deleteMysteryClue)
+}
+
+func (s *Service) deleteMysteryClue(ctx fiber.Ctx) error {
+	mysteryID, err := uuid.Parse(ctx.Params("id"))
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid mystery id"})
+	}
+	clueID, err := strconv.Atoi(ctx.Params("clueId"))
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid clue id"})
+	}
+	userID := ctx.Locals("userID").(uuid.UUID)
+
+	if err := s.MysteryService.DeleteClue(ctx.Context(), mysteryID, clueID, userID); err != nil {
+		if errors.Is(err, mysterysvc.ErrNotFound) || errors.Is(err, mysterysvc.ErrNotAuthor) {
+			return ctx.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": err.Error()})
+		}
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to delete clue"})
+	}
+	return ctx.SendStatus(fiber.StatusNoContent)
+}
+
+func (s *Service) setupUpdateMysteryClue(r fiber.Router) {
+	r.Put("/mysteries/:id/clues/:clueId", middleware.RequirePermission(s.AuthSession, s.AuthzService, authz.PermEditAnyTheory), s.updateMysteryClue)
+}
+
+func (s *Service) updateMysteryClue(ctx fiber.Ctx) error {
+	mysteryID, err := uuid.Parse(ctx.Params("id"))
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid mystery id"})
+	}
+	clueID, err := strconv.Atoi(ctx.Params("clueId"))
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid clue id"})
+	}
+	userID := ctx.Locals("userID").(uuid.UUID)
+
+	var req struct {
+		Body string `json:"body"`
+	}
+	if err := ctx.Bind().JSON(&req); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request body"})
+	}
+
+	if err := s.MysteryService.UpdateClue(ctx.Context(), mysteryID, clueID, userID, req.Body); err != nil {
+		if errors.Is(err, mysterysvc.ErrNotFound) || errors.Is(err, mysterysvc.ErrNotAuthor) || errors.Is(err, mysterysvc.ErrEmptyBody) {
+			return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to update clue"})
+	}
+	return ctx.JSON(fiber.Map{"status": "ok"})
 }

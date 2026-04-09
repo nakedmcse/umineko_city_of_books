@@ -556,6 +556,7 @@ export interface Mystery {
     difficulty: string;
     author: User;
     solved: boolean;
+    paused: boolean;
     winner?: User;
     solved_at?: string;
     attempt_count: number;
@@ -610,6 +611,7 @@ export interface MysteryDetail {
     difficulty: string;
     author: User;
     solved: boolean;
+    paused: boolean;
     winner?: User;
     solved_at?: string;
     clues: MysteryClue[];

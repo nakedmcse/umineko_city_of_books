@@ -275,6 +275,23 @@
     color: var(--gold);
 }
 
+.badgePaused {
+    background: rgba(255, 165, 0, 0.2);
+    color: #ffa500;
+}
+
+.pausedBanner {
+    text-align: center;
+    padding: 1.5rem;
+    color: #ffa500;
+    background: rgba(255, 165, 0, 0.08);
+    border: 1px solid rgba(255, 165, 0, 0.2);
+    border-radius: 6px;
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    letter-spacing: 0.03em;
+}
+
 .badgeDifficulty {
     background: rgba(var(--purple-rgb), 0.3);
     color: var(--purple-light);
@@ -393,6 +410,8 @@
 }
 
 .clue {
+    display: flex;
+    align-items: center;
     background: rgba(229, 57, 53, 0.08);
     border-left: 3px solid #e53935;
     padding: 0.75rem 1rem;
@@ -404,9 +423,6 @@
 }
 
 .clueCopy {
-    position: absolute;
-    top: 0.4rem;
-    right: 0.4rem;
     background: none;
     border: none;
     color: var(--text-muted);
@@ -423,6 +439,36 @@
 
 .clue:hover .clueCopy {
     opacity: 1;
+}
+
+.clueActions {
+    margin-left: auto;
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.clueActionBtn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.75rem;
+    padding: 0;
+    opacity: 0;
+    transition:
+        opacity 0.15s,
+        color 0.15s;
+    font-family: var(--font-display);
+}
+
+.clue:hover .clueActionBtn {
+    opacity: 0.7;
+}
+
+.clueActionBtn:hover {
+    opacity: 1;
+    color: var(--gold);
 }
 
 .clueCopy:hover {

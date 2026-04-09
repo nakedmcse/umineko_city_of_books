@@ -30,6 +30,7 @@ function SingleAttempt({
     onRefresh,
     replyToName,
     mysterySolved,
+    mysteryPaused,
 }: {
     attempt: MysteryAttempt;
     mysteryId: string;
@@ -37,6 +38,7 @@ function SingleAttempt({
     onRefresh: () => void;
     replyToName?: string;
     mysterySolved: boolean;
+    mysteryPaused: boolean;
 }) {
     const { user } = useAuth();
     const [showReply, setShowReply] = useState(false);
@@ -116,7 +118,7 @@ function SingleAttempt({
                         <Button variant="ghost" size="small" onClick={() => handleVote(-1)}>
                             {userVote === -1 ? "\u25BC" : "\u25BD"}
                         </Button>
-                        {(isAuthor || isOwner) && !mysterySolved && (
+                        {(isAuthor || isOwner) && !mysterySolved && (!mysteryPaused || isAuthor) && (
                             <Button variant="ghost" size="small" onClick={() => setShowReply(!showReply)}>
                                 Reply
                             </Button>
@@ -148,7 +150,7 @@ function SingleAttempt({
                     <ReportButton targetType="mystery_attempt" targetId={attempt.id} contextId={mysteryId} />
                 )}
             </div>
-            {showReply && (
+            {showReply && (!mysteryPaused || isAuthor) && (
                 <div className={styles.composer}>
                     <textarea
                         className={styles.composerTextarea}
@@ -182,12 +184,14 @@ export function AttemptItem({
     isAuthor,
     onRefresh,
     mysterySolved,
+    mysteryPaused,
 }: {
     attempt: MysteryAttempt;
     mysteryId: string;
     isAuthor: boolean;
     onRefresh: () => void;
     mysterySolved: boolean;
+    mysteryPaused: boolean;
 }) {
     const allReplies = flattenReplies(attempt);
     const [collapsed, setCollapsed] = useState(false);
@@ -200,6 +204,7 @@ export function AttemptItem({
                 isAuthor={isAuthor}
                 onRefresh={onRefresh}
                 mysterySolved={mysterySolved}
+                mysteryPaused={mysteryPaused}
             />
             {allReplies.length > 0 && (
                 <div className={styles.threadContainer}>
@@ -219,6 +224,7 @@ export function AttemptItem({
                                     onRefresh={onRefresh}
                                     replyToName={replyToName}
                                     mysterySolved={mysterySolved}
+                                    mysteryPaused={mysteryPaused}
                                 />
                             ))}
                         </div>

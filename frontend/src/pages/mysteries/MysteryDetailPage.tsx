@@ -7,8 +7,11 @@ import {
     createMysteryComment,
     deleteMystery,
     deleteMysteryAttachment,
+    deleteMysteryClue,
     deleteMysteryComment,
     getMystery,
+    setMysteryPaused,
+    updateMysteryClue,
     likeMysteryComment,
     unlikeMysteryComment,
     updateMysteryComment,
@@ -69,16 +72,20 @@ function PrivateClues({
     playerId,
     mysteryId,
     isAuthor,
+    canEditClues,
     onAdded,
 }: {
     clues: MysteryClue[];
     playerId: string;
     mysteryId: string;
     isAuthor: boolean;
+    canEditClues: boolean;
     onAdded: () => void;
 }) {
     const [body, setBody] = useState("");
     const [adding, setAdding] = useState(false);
+    const [editingClueId, setEditingClueId] = useState<number | null>(null);
+    const [editClueBody, setEditClueBody] = useState("");
     const playerClues = clues.filter(c => c.player_id === playerId);
 
     async function handleAdd() {
@@ -91,10 +98,26 @@ function PrivateClues({
             setBody("");
             onAdded();
         } catch {
-            // ignore
         } finally {
             setAdding(false);
         }
+    }
+
+    async function handleDeleteClue(clueId: number) {
+        if (!window.confirm("Delete this red truth? This cannot be undone.")) {
+            return;
+        }
+        await deleteMysteryClue(mysteryId, clueId);
+        onAdded();
+    }
+
+    async function handleSaveClue(clueId: number) {
+        if (!editClueBody.trim()) {
+            return;
+        }
+        await updateMysteryClue(mysteryId, clueId, editClueBody.trim());
+        setEditingClueId(null);
+        onAdded();
     }
 
     return (
@@ -103,8 +126,67 @@ function PrivateClues({
                 <div className={styles.cluesSection} style={{ marginBottom: "0.5rem" }}>
                     {playerClues.map(clue => (
                         <div key={clue.id} className={styles.clue} style={{ fontSize: "0.85rem" }}>
-                            {clue.body}
-                            <ClueCopyBtn text={clue.body} />
+                            {editingClueId === clue.id ? (
+                                <div style={{ display: "flex", gap: "0.4rem", alignItems: "center", flex: 1 }}>
+                                    <input
+                                        type="text"
+                                        value={editClueBody}
+                                        onChange={e => setEditClueBody(e.target.value)}
+                                        onKeyDown={e => {
+                                            if (e.key === "Enter") {
+                                                handleSaveClue(clue.id);
+                                            }
+                                            if (e.key === "Escape") {
+                                                setEditingClueId(null);
+                                            }
+                                        }}
+                                        style={{
+                                            flex: 1,
+                                            background: "var(--bg-void)",
+                                            border: "1px solid rgba(229, 57, 53, 0.3)",
+                                            color: "#ef9a9a",
+                                            padding: "0.3rem 0.5rem",
+                                            borderRadius: "4px",
+                                            fontSize: "0.8rem",
+                                            fontFamily: "inherit",
+                                            fontStyle: "italic",
+                                        }}
+                                        autoFocus
+                                    />
+                                    <Button variant="primary" size="small" onClick={() => handleSaveClue(clue.id)}>
+                                        Save
+                                    </Button>
+                                    <Button variant="ghost" size="small" onClick={() => setEditingClueId(null)}>
+                                        Cancel
+                                    </Button>
+                                </div>
+                            ) : (
+                                <>
+                                    {clue.body}
+                                    <span className={styles.clueActions}>
+                                        {canEditClues && (
+                                            <>
+                                                <button
+                                                    className={styles.clueActionBtn}
+                                                    onClick={() => {
+                                                        setEditingClueId(clue.id);
+                                                        setEditClueBody(clue.body);
+                                                    }}
+                                                >
+                                                    edit
+                                                </button>
+                                                <button
+                                                    className={styles.clueActionBtn}
+                                                    onClick={() => handleDeleteClue(clue.id)}
+                                                >
+                                                    delete
+                                                </button>
+                                            </>
+                                        )}
+                                        <ClueCopyBtn text={clue.body} />
+                                    </span>
+                                </>
+                            )}
                         </div>
                     ))}
                 </div>
@@ -291,7 +373,11 @@ export function MysteryDetailPage() {
                 }
                 throttledFetchMystery();
             }
-            if (msg.type === "mystery_clue_added") {
+            if (
+                msg.type === "mystery_clue_added" ||
+                msg.type === "mystery_clue_updated" ||
+                msg.type === "mystery_paused"
+            ) {
                 const data = msg.data as { mystery_id?: string };
                 if (data.mystery_id === id) {
                     throttledFetchMystery();
@@ -456,7 +542,15 @@ export function MysteryDetailPage() {
             )}
 
             <div className={styles.detail}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div
+                    style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        flexWrap: "wrap",
+                        gap: "0.5rem",
+                    }}
+                >
                     <div>
                         <h1 className={styles.detailTitle}>{mystery.title}</h1>
                         <div className={styles.detailMeta}>
@@ -470,12 +564,13 @@ export function MysteryDetailPage() {
                             >
                                 {mystery.solved ? "Solved" : "Open"}
                             </span>
+                            {mystery.paused && <span className={`${styles.badge} ${styles.badgePaused}`}>Paused</span>}
                             <span className={`${styles.badge} ${styles.badgePieces}`}>
                                 {mystery.player_count} piece{mystery.player_count !== 1 ? "s" : ""} attempting
                             </span>
                         </div>
                     </div>
-                    <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                    <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
                         {canEdit && (
                             <Button
                                 variant="secondary"
@@ -488,6 +583,18 @@ export function MysteryDetailPage() {
                         {canDelete && (
                             <Button variant="danger" size="small" onClick={handleDelete}>
                                 Delete
+                            </Button>
+                        )}
+                        {(isAuthor || canEdit) && !mystery.solved && (
+                            <Button
+                                variant={mystery.paused ? "primary" : "ghost"}
+                                size="small"
+                                onClick={async () => {
+                                    await setMysteryPaused(mystery.id, !mystery.paused);
+                                    fetchMystery();
+                                }}
+                            >
+                                {mystery.paused ? "Resume" : "Pause"}
                             </Button>
                         )}
                         <ShareButton contentId={mystery.id} contentType="mystery" contentTitle={mystery.title} />
@@ -508,7 +615,9 @@ export function MysteryDetailPage() {
                                     className={`${styles.clue}${clue.truth_type === "purple" ? ` ${styles.cluePurple}` : ""}`}
                                 >
                                     {clue.body}
-                                    <ClueCopyBtn text={clue.body} />
+                                    <span className={styles.clueActions}>
+                                        <ClueCopyBtn text={clue.body} />
+                                    </span>
                                 </div>
                             ))}
                     </div>
@@ -687,6 +796,7 @@ export function MysteryDetailPage() {
                                             playerId={group.author.id}
                                             mysteryId={mystery.id}
                                             isAuthor={isAuthor}
+                                            canEditClues={canEdit}
                                             onAdded={fetchMystery}
                                         />
                                         {group.attempts.map(a => (
@@ -697,6 +807,7 @@ export function MysteryDetailPage() {
                                                 isAuthor={isAuthor}
                                                 onRefresh={fetchMystery}
                                                 mysterySolved={mystery.solved}
+                                                mysteryPaused={mystery.paused}
                                             />
                                         ))}
                                     </>
@@ -729,6 +840,7 @@ export function MysteryDetailPage() {
                                 isAuthor={isAuthor}
                                 onRefresh={fetchMystery}
                                 mysterySolved={mystery.solved}
+                                mysteryPaused={mystery.paused}
                             />
                         ))}
                     </>
@@ -744,26 +856,33 @@ export function MysteryDetailPage() {
                     </div>
                 )}
 
-                {user && !isAuthor && !mystery.solved && (
-                    <div className={styles.composer}>
-                        <textarea
-                            className={styles.composerTextarea}
-                            placeholder="Declare your blue truth..."
-                            value={attemptBody}
-                            onChange={e => setAttemptBody(e.target.value)}
-                            rows={3}
-                        />
-                        <div className={styles.composerActions}>
-                            <Button
-                                variant="primary"
-                                onClick={handleSubmitAttempt}
-                                disabled={!attemptBody.trim() || submitting}
-                            >
-                                {submitting ? "..." : "Submit Blue Truth"}
-                            </Button>
+                {user &&
+                    !isAuthor &&
+                    !mystery.solved &&
+                    (mystery.paused ? (
+                        <div className={styles.pausedBanner}>
+                            The Game Master has paused this mystery. New attempts are temporarily disabled.
                         </div>
-                    </div>
-                )}
+                    ) : (
+                        <div className={styles.composer}>
+                            <textarea
+                                className={styles.composerTextarea}
+                                placeholder="Declare your blue truth..."
+                                value={attemptBody}
+                                onChange={e => setAttemptBody(e.target.value)}
+                                rows={3}
+                            />
+                            <div className={styles.composerActions}>
+                                <Button
+                                    variant="primary"
+                                    onClick={handleSubmitAttempt}
+                                    disabled={!attemptBody.trim() || submitting}
+                                >
+                                    {submitting ? "..." : "Submit Blue Truth"}
+                                </Button>
+                            </div>
+                        </div>
+                    ))}
 
                 {!user && (
                     <div className="empty-state">

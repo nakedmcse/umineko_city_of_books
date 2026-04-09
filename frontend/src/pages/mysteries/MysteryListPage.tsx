@@ -219,6 +219,9 @@ export function MysteryListPage() {
                                         >
                                             {m.solved ? "Solved" : "Open"}
                                         </span>
+                                        {m.paused && (
+                                            <span className={`${styles.badge} ${styles.badgePaused}`}>Paused</span>
+                                        )}
                                         <span className={`${styles.badge} ${styles.badgeDifficulty}`}>
                                             {m.difficulty}
                                         </span>

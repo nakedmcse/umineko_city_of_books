@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"umineko_city_of_books/internal/db"
@@ -25,6 +26,8 @@ type (
 		ListByUser(ctx context.Context, userID uuid.UUID, limit, offset int) ([]MysteryRow, int, error)
 		GetClues(ctx context.Context, mysteryID uuid.UUID) ([]dto.MysteryClue, error)
 		DeleteClues(ctx context.Context, mysteryID uuid.UUID) error
+		DeleteClue(ctx context.Context, clueID int) error
+		UpdateClue(ctx context.Context, clueID int, body string) error
 		GetAuthorID(ctx context.Context, mysteryID uuid.UUID) (uuid.UUID, error)
 
 		CreateAttempt(ctx context.Context, id uuid.UUID, mysteryID uuid.UUID, userID uuid.UUID, parentID *uuid.UUID, body string) error
@@ -38,6 +41,8 @@ type (
 
 		MarkSolved(ctx context.Context, mysteryID uuid.UUID, attemptID uuid.UUID) error
 		IsSolved(ctx context.Context, mysteryID uuid.UUID) (bool, error)
+		IsPaused(ctx context.Context, mysteryID uuid.UUID) (bool, error)
+		SetPaused(ctx context.Context, mysteryID uuid.UUID, paused bool) error
 
 		GetLeaderboard(ctx context.Context, limit int) ([]LeaderboardEntry, error)
 		GetTopDetectiveIDs(ctx context.Context) ([]string, error)
@@ -72,6 +77,7 @@ type (
 		Body              string
 		Difficulty        string
 		Solved            bool
+		Paused            bool
 		WinnerID          *uuid.UUID
 		WinnerUsername    *string
 		WinnerDisplayName *string
@@ -155,6 +161,7 @@ func (r *MysteryRow) ToResponse() dto.MysteryResponse {
 		Body:       r.Body,
 		Difficulty: r.Difficulty,
 		Solved:     r.Solved,
+		Paused:     r.Paused,
 		SolvedAt:   r.SolvedAt,
 		Author: dto.UserResponse{
 			ID:          r.UserID,
@@ -249,9 +256,9 @@ func (r *mysteryRepository) DeleteAsAdmin(ctx context.Context, id uuid.UUID) err
 
 func (r *mysteryRepository) GetByID(ctx context.Context, id uuid.UUID) (*MysteryRow, error) {
 	var row MysteryRow
-	var solved int
+	var solved, paused int
 	err := r.db.QueryRowContext(ctx,
-		`SELECT m.id, m.user_id, m.title, m.body, m.difficulty, m.solved, m.solved_at, m.created_at, m.updated_at,
+		`SELECT m.id, m.user_id, m.title, m.body, m.difficulty, m.solved, m.paused, m.solved_at, m.created_at, m.updated_at,
 			u.username, u.display_name, u.avatar_url, COALESCE(r.role, ''),
 			w.id, w.username, w.display_name, w.avatar_url, COALESCE(wr.role, ''),
 			(SELECT COUNT(*) FROM mystery_attempts WHERE mystery_id = m.id),
@@ -263,13 +270,14 @@ func (r *mysteryRepository) GetByID(ctx context.Context, id uuid.UUID) (*Mystery
 		LEFT JOIN user_roles wr ON wr.user_id = w.id
 		WHERE m.id = ?`, id,
 	).Scan(
-		&row.ID, &row.UserID, &row.Title, &row.Body, &row.Difficulty, &solved, &row.SolvedAt, &row.CreatedAt, &row.UpdatedAt,
+		&row.ID, &row.UserID, &row.Title, &row.Body, &row.Difficulty, &solved, &paused, &row.SolvedAt, &row.CreatedAt, &row.UpdatedAt,
 		&row.AuthorUsername, &row.AuthorDisplayName, &row.AuthorAvatarURL, &row.AuthorRole,
 		&row.WinnerID, &row.WinnerUsername, &row.WinnerDisplayName, &row.WinnerAvatarURL, &row.WinnerRole,
 		&row.AttemptCount, &row.ClueCount,
 	)
 	row.Solved = solved != 0
-	if err == sql.ErrNoRows {
+	row.Paused = paused != 0
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
@@ -310,7 +318,7 @@ func (r *mysteryRepository) List(ctx context.Context, sort string, solved *bool,
 		orderBy = "ORDER BY m.created_at ASC"
 	}
 
-	query := `SELECT m.id, m.user_id, m.title, m.body, m.difficulty, m.solved, m.solved_at, m.created_at, m.updated_at,
+	query := `SELECT m.id, m.user_id, m.title, m.body, m.difficulty, m.solved, m.paused, m.solved_at, m.created_at, m.updated_at,
 		u.username, u.display_name, u.avatar_url, COALESCE(r.role, ''),
 		w.id, w.username, w.display_name, w.avatar_url, COALESCE(wr.role, ''),
 		(SELECT COUNT(*) FROM mystery_attempts WHERE mystery_id = m.id),
@@ -331,9 +339,9 @@ func (r *mysteryRepository) List(ctx context.Context, sort string, solved *bool,
 	var result []MysteryRow
 	for rows.Next() {
 		var row MysteryRow
-		var solved int
+		var solved, paused int
 		if err := rows.Scan(
-			&row.ID, &row.UserID, &row.Title, &row.Body, &row.Difficulty, &solved, &row.SolvedAt, &row.CreatedAt, &row.UpdatedAt,
+			&row.ID, &row.UserID, &row.Title, &row.Body, &row.Difficulty, &solved, &paused, &row.SolvedAt, &row.CreatedAt, &row.UpdatedAt,
 			&row.AuthorUsername, &row.AuthorDisplayName, &row.AuthorAvatarURL, &row.AuthorRole,
 			&row.WinnerID, &row.WinnerUsername, &row.WinnerDisplayName, &row.WinnerAvatarURL, &row.WinnerRole,
 			&row.AttemptCount, &row.ClueCount,
@@ -341,6 +349,7 @@ func (r *mysteryRepository) List(ctx context.Context, sort string, solved *bool,
 			return nil, 0, fmt.Errorf("scan mystery: %w", err)
 		}
 		row.Solved = solved != 0
+		row.Paused = paused != 0
 		result = append(result, row)
 	}
 	return result, total, rows.Err()
@@ -371,6 +380,22 @@ func (r *mysteryRepository) DeleteClues(ctx context.Context, mysteryID uuid.UUID
 	_, err := r.db.ExecContext(ctx, `DELETE FROM mystery_clues WHERE mystery_id = ? AND player_id IS NULL`, mysteryID)
 	if err != nil {
 		return fmt.Errorf("delete clues: %w", err)
+	}
+	return nil
+}
+
+func (r *mysteryRepository) DeleteClue(ctx context.Context, clueID int) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM mystery_clues WHERE id = ?`, clueID)
+	if err != nil {
+		return fmt.Errorf("delete clue: %w", err)
+	}
+	return nil
+}
+
+func (r *mysteryRepository) UpdateClue(ctx context.Context, clueID int, body string) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE mystery_clues SET body = ? WHERE id = ?`, body, clueID)
+	if err != nil {
+		return fmt.Errorf("update clue: %w", err)
 	}
 	return nil
 }
@@ -531,6 +556,27 @@ func (r *mysteryRepository) IsSolved(ctx context.Context, mysteryID uuid.UUID) (
 	return solved != 0, nil
 }
 
+func (r *mysteryRepository) IsPaused(ctx context.Context, mysteryID uuid.UUID) (bool, error) {
+	var paused int
+	err := r.db.QueryRowContext(ctx, `SELECT paused FROM mysteries WHERE id = ?`, mysteryID).Scan(&paused)
+	if err != nil {
+		return false, fmt.Errorf("check mystery paused: %w", err)
+	}
+	return paused != 0, nil
+}
+
+func (r *mysteryRepository) SetPaused(ctx context.Context, mysteryID uuid.UUID, paused bool) error {
+	val := 0
+	if paused {
+		val = 1
+	}
+	_, err := r.db.ExecContext(ctx, `UPDATE mysteries SET paused = ? WHERE id = ?`, val, mysteryID)
+	if err != nil {
+		return fmt.Errorf("set mystery paused: %w", err)
+	}
+	return nil
+}
+
 func (r *mysteryRepository) CountAttempts(ctx context.Context, mysteryID uuid.UUID) (int, error) {
 	var count int
 	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM mystery_attempts WHERE mystery_id = ?`, mysteryID).Scan(&count)
@@ -543,7 +589,7 @@ func (r *mysteryRepository) ListByUser(ctx context.Context, userID uuid.UUID, li
 		return nil, 0, fmt.Errorf("count user mysteries: %w", err)
 	}
 
-	query := `SELECT m.id, m.user_id, m.title, m.body, m.difficulty, m.solved, m.solved_at, m.created_at, m.updated_at,
+	query := `SELECT m.id, m.user_id, m.title, m.body, m.difficulty, m.solved, m.paused, m.solved_at, m.created_at, m.updated_at,
 		u.username, u.display_name, u.avatar_url, COALESCE(r.role, ''),
 		w.id, w.username, w.display_name, w.avatar_url, COALESCE(wr.role, ''),
 		(SELECT COUNT(*) FROM mystery_attempts WHERE mystery_id = m.id),
@@ -566,9 +612,9 @@ func (r *mysteryRepository) ListByUser(ctx context.Context, userID uuid.UUID, li
 	var result []MysteryRow
 	for rows.Next() {
 		var row MysteryRow
-		var solved int
+		var solved, paused int
 		if err := rows.Scan(
-			&row.ID, &row.UserID, &row.Title, &row.Body, &row.Difficulty, &solved, &row.SolvedAt, &row.CreatedAt, &row.UpdatedAt,
+			&row.ID, &row.UserID, &row.Title, &row.Body, &row.Difficulty, &solved, &paused, &row.SolvedAt, &row.CreatedAt, &row.UpdatedAt,
 			&row.AuthorUsername, &row.AuthorDisplayName, &row.AuthorAvatarURL, &row.AuthorRole,
 			&row.WinnerID, &row.WinnerUsername, &row.WinnerDisplayName, &row.WinnerAvatarURL, &row.WinnerRole,
 			&row.AttemptCount, &row.ClueCount,
@@ -576,6 +622,7 @@ func (r *mysteryRepository) ListByUser(ctx context.Context, userID uuid.UUID, li
 			return nil, 0, fmt.Errorf("scan mystery: %w", err)
 		}
 		row.Solved = solved != 0
+		row.Paused = paused != 0
 		result = append(result, row)
 	}
 	return result, total, rows.Err()

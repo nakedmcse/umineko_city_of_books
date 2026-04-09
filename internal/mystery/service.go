@@ -45,6 +45,9 @@ type (
 		UploadCommentMedia(ctx context.Context, commentID uuid.UUID, userID uuid.UUID, contentType string, fileSize int64, reader io.Reader) (*dto.PostMediaResponse, error)
 		UploadAttachment(ctx context.Context, mysteryID uuid.UUID, userID uuid.UUID, fileName string, fileSize int64, reader io.Reader) (*dto.MysteryAttachment, error)
 		DeleteAttachment(ctx context.Context, attachmentID int64, mysteryID uuid.UUID, userID uuid.UUID) error
+		SetPaused(ctx context.Context, mysteryID uuid.UUID, userID uuid.UUID, paused bool) error
+		DeleteClue(ctx context.Context, mysteryID uuid.UUID, clueID int, userID uuid.UUID) error
+		UpdateClue(ctx context.Context, mysteryID uuid.UUID, clueID int, userID uuid.UUID, body string) error
 	}
 
 	service struct {
@@ -211,6 +214,7 @@ func (s *service) GetMystery(ctx context.Context, id uuid.UUID, viewerID uuid.UU
 		Body:       row.Body,
 		Difficulty: row.Difficulty,
 		Solved:     row.Solved,
+		Paused:     row.Paused,
 		SolvedAt:   row.SolvedAt,
 		Author: dto.UserResponse{
 			ID:          row.UserID,
@@ -371,6 +375,9 @@ func (s *service) CreateAttempt(ctx context.Context, mysteryID uuid.UUID, userID
 		return uuid.Nil, err
 	} else if solved {
 		return uuid.Nil, ErrAlreadySolved
+	}
+	if paused, _ := s.mysteryRepo.IsPaused(ctx, mysteryID); paused && authorID != userID {
+		return uuid.Nil, ErrMysteryPaused
 	}
 	if blocked, _ := s.blockSvc.IsBlockedEither(ctx, userID, authorID); blocked {
 		return uuid.Nil, block.ErrUserBlocked
@@ -852,5 +859,51 @@ func (s *service) DeleteAttachment(ctx context.Context, attachmentID int64, myst
 		os.Remove(diskPath)
 	}
 
+	return nil
+}
+
+func (s *service) SetPaused(ctx context.Context, mysteryID uuid.UUID, userID uuid.UUID, paused bool) error {
+	authorID, err := s.mysteryRepo.GetAuthorID(ctx, mysteryID)
+	if err != nil {
+		return ErrNotFound
+	}
+	if authorID != userID && !s.authz.Can(ctx, userID, authz.PermEditAnyTheory) {
+		return ErrNotAuthor
+	}
+	if err := s.mysteryRepo.SetPaused(ctx, mysteryID, paused); err != nil {
+		return err
+	}
+	s.hub.Broadcast(ws.Message{
+		Type: "mystery_paused",
+		Data: map[string]interface{}{
+			"mystery_id": mysteryID,
+			"paused":     paused,
+		},
+	})
+	return nil
+}
+
+func (s *service) DeleteClue(ctx context.Context, mysteryID uuid.UUID, clueID int, userID uuid.UUID) error {
+	if err := s.mysteryRepo.DeleteClue(ctx, clueID); err != nil {
+		return err
+	}
+	s.hub.Broadcast(ws.Message{
+		Type: "mystery_clue_updated",
+		Data: map[string]interface{}{"mystery_id": mysteryID},
+	})
+	return nil
+}
+
+func (s *service) UpdateClue(ctx context.Context, mysteryID uuid.UUID, clueID int, userID uuid.UUID, body string) error {
+	if strings.TrimSpace(body) == "" {
+		return ErrEmptyBody
+	}
+	if err := s.mysteryRepo.UpdateClue(ctx, clueID, strings.TrimSpace(body)); err != nil {
+		return err
+	}
+	s.hub.Broadcast(ws.Message{
+		Type: "mystery_clue_updated",
+		Data: map[string]interface{}{"mystery_id": mysteryID},
+	})
 	return nil
 }

@@ -10,6 +10,7 @@ type (
 		Difficulty   string        `json:"difficulty"`
 		Author       UserResponse  `json:"author"`
 		Solved       bool          `json:"solved"`
+		Paused       bool          `json:"paused"`
 		Winner       *UserResponse `json:"winner,omitempty"`
 		SolvedAt     *string       `json:"solved_at,omitempty"`
 		AttemptCount int           `json:"attempt_count"`
@@ -24,6 +25,7 @@ type (
 		Difficulty  string                   `json:"difficulty"`
 		Author      UserResponse             `json:"author"`
 		Solved      bool                     `json:"solved"`
+		Paused      bool                     `json:"paused"`
 		Winner      *UserResponse            `json:"winner,omitempty"`
 		SolvedAt    *string                  `json:"solved_at,omitempty"`
 		Clues       []MysteryClue            `json:"clues"`
