@@ -12,6 +12,7 @@ import {
     kickChatRoomMember,
     leaveChatRoom,
     markChatRoomRead,
+    setChatRoomMuted,
 } from "../../api/endpoints";
 import { useMessageHistory } from "../../hooks/useMessageHistory";
 import { Button } from "../../components/Button/Button";
@@ -84,15 +85,15 @@ export function RoomPage() {
         if (!messages.some(m => m.id === pendingTargetMsgId)) {
             return;
         }
-        const raf = requestAnimationFrame(() => {
+        const t = setTimeout(() => {
             const el = document.getElementById(`chat-msg-${pendingTargetMsgId}`);
             if (el) {
                 el.scrollIntoView({ behavior: "smooth", block: "center" });
                 setHighlightedMsgId(pendingTargetMsgId);
                 handledHashRef.current = pendingTargetMsgId;
             }
-        });
-        return () => cancelAnimationFrame(raf);
+        }, 300);
+        return () => clearTimeout(t);
     }, [pendingTargetMsgId, messages]);
 
     useEffect(() => {
@@ -259,6 +260,28 @@ export function RoomPage() {
         }
     }
 
+    async function handleToggleMute() {
+        if (!roomId || !room) {
+            return;
+        }
+        setBusy("mute");
+        const next = !room.viewer_muted;
+        try {
+            await setChatRoomMuted(roomId, next);
+            setRoom(prev => {
+                if (!prev) {
+                    return prev;
+                }
+                return { ...prev, viewer_muted: next };
+            });
+            setToast(next ? "Notifications muted" : "Notifications unmuted");
+        } catch (err) {
+            setToast(err instanceof Error ? err.message : "Failed to update mute");
+        } finally {
+            setBusy(null);
+        }
+    }
+
     async function handleLeave() {
         if (!roomId || !window.confirm("Leave this room?")) {
             return;
@@ -354,6 +377,19 @@ export function RoomPage() {
                         ))}
                     </div>
                     <div className={styles.sidebarFooter}>
+                        <Button
+                            variant="secondary"
+                            size="small"
+                            onClick={handleToggleMute}
+                            disabled={busy === "mute"}
+                            title={room.viewer_muted ? "Unmute notifications" : "Mute notifications"}
+                        >
+                            {busy === "mute"
+                                ? "..."
+                                : room.viewer_muted
+                                  ? "Unmute notifications"
+                                  : "Mute notifications"}
+                        </Button>
                         {isHost ? (
                             <Button variant="danger" size="small" onClick={handleDelete} disabled={busy === "delete"}>
                                 {busy === "delete" ? "Deleting..." : "Delete Room"}
