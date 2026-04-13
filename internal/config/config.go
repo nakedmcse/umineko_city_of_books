@@ -34,6 +34,8 @@ const (
 var (
 	Cfg Config
 
+	Version = "dev"
+
 	SettingUploadDir               = &SiteSettingDef{"upload_dir", "uploads", TypeString}
 	SettingBaseURL                 = &SiteSettingDef{"base_url", "http://localhost:4323", TypeString}
 	SettingLogLevel                = &SiteSettingDef{"log_level", "info", TypeString}

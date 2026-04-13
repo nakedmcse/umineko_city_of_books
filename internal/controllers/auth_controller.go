@@ -264,6 +264,7 @@ func (s *Service) siteInfo(ctx fiber.Ctx) error {
 		TopGMIDs:              topGMs,
 		VanityRoles:           vrList,
 		VanityRoleAssignments: assignments,
+		Version:               config.Version,
 	})
 }
 

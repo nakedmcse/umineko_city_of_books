@@ -79,6 +79,7 @@ export interface SiteInfo {
     top_gm_ids: string[];
     vanity_roles: VanityRoleDefinition[];
     vanity_role_assignments: Record<string, string[]>;
+    version: string;
 }
 
 export async function getSiteInfo(): Promise<SiteInfo> {

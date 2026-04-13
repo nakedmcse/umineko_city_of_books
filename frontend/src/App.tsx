@@ -9,6 +9,7 @@ import { Header } from "./components/layout/Header/Header";
 import { Sidebar } from "./components/layout/Sidebar/Sidebar";
 import { Butterflies } from "./components/layout/Butterflies/Butterflies";
 import { ProtectedRoute } from "./components/ProtectedRoute/ProtectedRoute";
+import { StaleVersionBanner } from "./components/StaleVersionBanner/StaleVersionBanner";
 import { FeedPage } from "./pages/theories/FeedPage";
 import { TheoryPage } from "./pages/theories/TheoryPage";
 import { CreateTheoryPage } from "./pages/theories/CreateTheoryPage";
@@ -124,6 +125,7 @@ function AppLayout() {
             <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
             <div className="app-main">
                 <Header onToggleSidebar={() => setSidebarOpen(prev => !prev)} />
+                <StaleVersionBanner />
                 <AnnouncementBanner />
                 <main className="main-content">
                     <Routes>

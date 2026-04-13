@@ -16,8 +16,17 @@ export function SiteInfoProvider({ children }: PropsWithChildren) {
                 .then(setSiteInfo)
                 .catch(() => {});
         }
+        function handleVisibility() {
+            if (document.visibilityState === "visible") {
+                handleRefresh();
+            }
+        }
         window.addEventListener("site-info-refresh", handleRefresh);
-        return () => window.removeEventListener("site-info-refresh", handleRefresh);
+        document.addEventListener("visibilitychange", handleVisibility);
+        return () => {
+            window.removeEventListener("site-info-refresh", handleRefresh);
+            document.removeEventListener("visibilitychange", handleVisibility);
+        };
     }, []);
 
     if (!siteInfo) {

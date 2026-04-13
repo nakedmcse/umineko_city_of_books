@@ -172,6 +172,7 @@ type (
 		TopGMIDs              []string             `json:"top_gm_ids"`
 		VanityRoles           []SiteInfoVanityRole `json:"vanity_roles"`
 		VanityRoleAssignments map[string][]string  `json:"vanity_role_assignments"`
+		Version               string               `json:"version"`
 	}
 
 	SiteInfoVanityRole struct {
