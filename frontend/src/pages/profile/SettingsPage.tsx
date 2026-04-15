@@ -291,8 +291,9 @@ export function SettingsPage() {
                                             type="text"
                                             fullWidth
                                             value={form.pronounSubject}
-                                            onChange={e => form.setPronounSubject(e.target.value)}
+                                            onChange={e => form.setPronounSubject(e.target.value.slice(0, 10))}
                                             placeholder="they"
+                                            maxLength={10}
                                         />
                                     </label>
                                     <label className={styles.label}>
@@ -301,8 +302,9 @@ export function SettingsPage() {
                                             type="text"
                                             fullWidth
                                             value={form.pronounPossessive}
-                                            onChange={e => form.setPronounPossessive(e.target.value)}
+                                            onChange={e => form.setPronounPossessive(e.target.value.slice(0, 10))}
                                             placeholder="their"
+                                            maxLength={10}
                                         />
                                     </label>
                                 </div>

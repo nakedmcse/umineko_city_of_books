@@ -5,9 +5,10 @@ const IDLE_AFTER_MS = 60_000;
 interface Options {
     roomId: string | undefined;
     sendWSMessage: (msg: object) => void;
+    wsEpoch: number;
 }
 
-export function usePresenceReporter({ roomId, sendWSMessage }: Options): void {
+export function usePresenceReporter({ roomId, sendWSMessage, wsEpoch }: Options): void {
     const lastSentRef = useRef<"active" | "idle" | null>(null);
     const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -15,6 +16,7 @@ export function usePresenceReporter({ roomId, sendWSMessage }: Options): void {
         if (!roomId) {
             return;
         }
+        lastSentRef.current = null;
 
         const report = (state: "active" | "idle") => {
             if (lastSentRef.current === state) {
@@ -78,5 +80,5 @@ export function usePresenceReporter({ roomId, sendWSMessage }: Options): void {
             window.removeEventListener("touchstart", onActivity);
             document.removeEventListener("visibilitychange", onVisibilityChange);
         };
-    }, [roomId, sendWSMessage]);
+    }, [roomId, sendWSMessage, wsEpoch]);
 }

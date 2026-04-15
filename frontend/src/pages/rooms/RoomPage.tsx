@@ -59,7 +59,7 @@ export function RoomPage() {
     const navigate = useNavigate();
     const location = useLocation();
     const { user } = useAuth();
-    const { addWSListener, sendWSMessage } = useNotifications();
+    const { addWSListener, sendWSMessage, wsEpoch } = useNotifications();
     const [room, setRoom] = useState<ChatRoom | null>(null);
     const [members, setMembers] = useState<ChatRoomMember[]>([]);
     const [loading, setLoading] = useState(true);
@@ -71,7 +71,7 @@ export function RoomPage() {
     const [replyingTo, setReplyingTo] = useState<ReplyTarget | null>(null);
     const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
     const [presenceMap, setPresenceMap] = useState<Record<string, "active" | "idle">>({});
-    usePresenceReporter({ roomId, sendWSMessage });
+    usePresenceReporter({ roomId, sendWSMessage, wsEpoch });
     const { typingUserIds, noteTyping, clearUser: clearTypingUser, reset: resetTyping } = useTypingIndicator();
 
     useEffect(() => {
@@ -221,7 +221,7 @@ export function RoomPage() {
         return () => {
             sendWSMessage({ type: "leave_room", data: { room_id: roomId } });
         };
-    }, [roomId, sendWSMessage]);
+    }, [roomId, sendWSMessage, wsEpoch]);
 
     useEffect(() => {
         if (!user) {

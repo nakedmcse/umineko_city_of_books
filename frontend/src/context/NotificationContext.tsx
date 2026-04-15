@@ -13,6 +13,7 @@ export function NotificationProvider({ children }: PropsWithChildren) {
     const [unreadCount, setUnreadCount] = useState(0);
     const [chatUnreadCount, setChatUnreadCount] = useState(0);
     const [loading, setLoading] = useState(false);
+    const [wsEpoch, setWsEpoch] = useState(0);
     const wsRef = useRef<WebSocket | null>(null);
     const backoffRef = useRef(1000);
     const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -45,6 +46,7 @@ export function NotificationProvider({ children }: PropsWithChildren) {
 
         socket.onopen = () => {
             backoffRef.current = 1000;
+            setWsEpoch(n => n + 1);
             window.dispatchEvent(new CustomEvent("site-info-refresh"));
         };
 
@@ -193,6 +195,7 @@ export function NotificationProvider({ children }: PropsWithChildren) {
                 refreshNotifications,
                 addWSListener,
                 sendWSMessage,
+                wsEpoch,
             }}
         >
             {children}

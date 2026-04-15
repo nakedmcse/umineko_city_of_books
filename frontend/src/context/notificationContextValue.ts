@@ -13,6 +13,7 @@ export interface NotificationContextValue {
     refreshNotifications: () => Promise<void>;
     addWSListener: (handler: WSMessageHandler) => () => void;
     sendWSMessage: (msg: object) => void;
+    wsEpoch: number;
 }
 
 export const NotificationContext = createContext<NotificationContextValue | null>(null);

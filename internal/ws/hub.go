@@ -9,6 +9,12 @@ import (
 	"github.com/google/uuid"
 )
 
+const (
+	sendBufferSize = 64
+	writeTimeout   = 10 * time.Second
+	pingInterval   = 30 * time.Second
+)
+
 type (
 	Message struct {
 		Type string      `json:"type"`
@@ -16,9 +22,11 @@ type (
 	}
 
 	Client struct {
-		UserID uuid.UUID
-		Conn   *websocket.Conn
-		mu     sync.Mutex
+		UserID    uuid.UUID
+		Conn      *websocket.Conn
+		send      chan []byte
+		closeCh   chan struct{}
+		closeOnce sync.Once
 	}
 
 	viewerInfo struct {
@@ -39,22 +47,72 @@ const (
 	ViewerStateIdle   = "idle"
 )
 
-func (c *Client) WriteMessage(messageType int, data []byte) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.Conn.WriteMessage(messageType, data)
+func NewClient(userID uuid.UUID, conn *websocket.Conn) *Client {
+	return &Client{
+		UserID:  userID,
+		Conn:    conn,
+		send:    make(chan []byte, sendBufferSize),
+		closeCh: make(chan struct{}),
+	}
 }
 
-func (c *Client) WriteControl(messageType int, data []byte, deadline time.Time) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.Conn.WriteControl(messageType, data, deadline)
+// Start launches the writer goroutine. Call once per client.
+func (c *Client) Start() {
+	go c.writeLoop()
 }
 
+func (c *Client) writeLoop() {
+	pingTicker := time.NewTicker(pingInterval)
+	defer func() {
+		pingTicker.Stop()
+		_ = c.Conn.Close()
+	}()
+	for {
+		select {
+		case data, ok := <-c.send:
+			if !ok {
+				return
+			}
+			_ = c.Conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+			if err := c.Conn.WriteMessage(websocket.TextMessage, data); err != nil {
+				return
+			}
+		case <-pingTicker.C:
+			_ = c.Conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+			if err := c.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				return
+			}
+		case <-c.closeCh:
+			return
+		}
+	}
+}
+
+// enqueue tries to push data onto the send channel without blocking.
+// Returns false if the buffer is full (slow consumer); caller should drop the client.
+func (c *Client) enqueue(data []byte) bool {
+	select {
+	case c.send <- data:
+		return true
+	case <-c.closeCh:
+		return false
+	default:
+		c.kill()
+		return false
+	}
+}
+
+// kill signals the writer to stop. Safe to call multiple times.
+func (c *Client) kill() {
+	c.closeOnce.Do(func() {
+		close(c.closeCh)
+	})
+}
+
+// Close is the external shutdown trigger.
 func (c *Client) Close() error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.Conn.Close()
+	c.kill()
+	return nil
 }
 
 func NewHub() *Hub {
@@ -156,11 +214,14 @@ func (h *Hub) GetRoomPresence(roomID uuid.UUID) map[uuid.UUID]string {
 
 func (h *Hub) Register(client *Client) {
 	h.mu.Lock()
-	defer h.mu.Unlock()
 	h.clients[client.UserID] = append(h.clients[client.UserID], client)
+	h.mu.Unlock()
+	client.Start()
 }
 
 func (h *Hub) Unregister(client *Client) []uuid.UUID {
+	client.kill()
+
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -195,11 +256,37 @@ func (h *Hub) Unregister(client *Client) []uuid.UUID {
 	return clearedRooms
 }
 
-func (h *Hub) SendToUser(userID uuid.UUID, msg Message) {
+// snapshotConnsForUser returns a copy of the user's clients without holding the lock for writes.
+func (h *Hub) snapshotConnsForUser(userID uuid.UUID) []*Client {
 	h.mu.RLock()
-	conns := h.clients[userID]
-	h.mu.RUnlock()
+	defer h.mu.RUnlock()
+	src := h.clients[userID]
+	if len(src) == 0 {
+		return nil
+	}
+	out := make([]*Client, len(src))
+	copy(out, src)
+	return out
+}
 
+func (h *Hub) snapshotConnsForUsers(userIDs []uuid.UUID) []*Client {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	var out []*Client
+	for _, uid := range userIDs {
+		out = append(out, h.clients[uid]...)
+	}
+	return out
+}
+
+func (h *Hub) reapDead(dead []*Client) {
+	for _, c := range dead {
+		h.Unregister(c)
+	}
+}
+
+func (h *Hub) SendToUser(userID uuid.UUID, msg Message) {
+	conns := h.snapshotConnsForUser(userID)
 	if len(conns) == 0 {
 		return
 	}
@@ -211,19 +298,18 @@ func (h *Hub) SendToUser(userID uuid.UUID, msg Message) {
 
 	var dead []*Client
 	for _, client := range conns {
-		if err := client.WriteMessage(websocket.TextMessage, data); err != nil {
+		if !client.enqueue(data) {
 			dead = append(dead, client)
 		}
 	}
-
-	for _, client := range dead {
-		h.Unregister(client)
+	if len(dead) > 0 {
+		h.reapDead(dead)
 	}
 }
 
 func (h *Hub) Broadcast(msg Message) {
 	h.mu.RLock()
-	var allConns []*Client
+	allConns := make([]*Client, 0)
 	for _, conns := range h.clients {
 		allConns = append(allConns, conns...)
 	}
@@ -238,8 +324,14 @@ func (h *Hub) Broadcast(msg Message) {
 		return
 	}
 
+	var dead []*Client
 	for _, client := range allConns {
-		_ = client.WriteMessage(websocket.TextMessage, data)
+		if !client.enqueue(data) {
+			dead = append(dead, client)
+		}
+	}
+	if len(dead) > 0 {
+		h.reapDead(dead)
 	}
 }
 
@@ -283,7 +375,7 @@ func (h *Hub) IsUserInRoom(roomID, userID uuid.UUID) bool {
 func (h *Hub) BroadcastToRoom(roomID uuid.UUID, msg Message, excludeUserID uuid.UUID) {
 	h.mu.RLock()
 	members := h.rooms[roomID]
-	var targetUserIDs []uuid.UUID
+	targetUserIDs := make([]uuid.UUID, 0, len(members))
 	for uid := range members {
 		if uid != excludeUserID {
 			targetUserIDs = append(targetUserIDs, uid)
@@ -291,18 +383,24 @@ func (h *Hub) BroadcastToRoom(roomID uuid.UUID, msg Message, excludeUserID uuid.
 	}
 	h.mu.RUnlock()
 
+	if len(targetUserIDs) == 0 {
+		return
+	}
+
 	data, err := json.Marshal(msg)
 	if err != nil {
 		return
 	}
 
-	for _, uid := range targetUserIDs {
-		h.mu.RLock()
-		conns := h.clients[uid]
-		h.mu.RUnlock()
+	conns := h.snapshotConnsForUsers(targetUserIDs)
 
-		for _, client := range conns {
-			_ = client.WriteMessage(websocket.TextMessage, data)
+	var dead []*Client
+	for _, client := range conns {
+		if !client.enqueue(data) {
+			dead = append(dead, client)
 		}
+	}
+	if len(dead) > 0 {
+		h.reapDead(dead)
 	}
 }

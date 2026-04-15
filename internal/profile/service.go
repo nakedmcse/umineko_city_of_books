@@ -68,11 +68,22 @@ func (s *service) GetProfile(ctx context.Context, username string, viewerID uuid
 	return resp, nil
 }
 
+const maxPronounLength = 10
+
 func (s *service) UpdateProfile(ctx context.Context, userID uuid.UUID, req dto.UpdateProfileRequest) error {
 	if err := validateDOB(req.DOB); err != nil {
 		return err
 	}
+	req.PronounSubject = capLen(req.PronounSubject, maxPronounLength)
+	req.PronounPossessive = capLen(req.PronounPossessive, maxPronounLength)
 	return s.userRepo.UpdateProfile(ctx, userID, req)
+}
+
+func capLen(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	return s[:max]
 }
 
 func validateDOB(dob string) error {

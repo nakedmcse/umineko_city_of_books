@@ -75,10 +75,7 @@ func Handler(hub *Hub, sessionMgr *session.Manager, roomLister RoomLister) fiber
 
 		return upgrader.Upgrade(ctx.RequestCtx(), func(conn *websocket.Conn) {
 			logger.Log.Debug().Str("user_id", userID.String()).Msg("ws client connected")
-			client := &Client{
-				UserID: userID,
-				Conn:   conn,
-			}
+			client := NewClient(userID, conn)
 
 			hub.Register(client)
 			defer func() {
@@ -87,7 +84,6 @@ func Handler(hub *Hub, sessionMgr *session.Manager, roomLister RoomLister) fiber
 					broadcastPresence(hub, roomID, userID, "")
 				}
 			}()
-			defer client.Close()
 
 			if roomLister != nil {
 				roomIDs, err := roomLister.GetRoomsByUser(context.Background(), userID)
@@ -102,24 +98,6 @@ func Handler(hub *Hub, sessionMgr *session.Manager, roomLister RoomLister) fiber
 				return conn.SetReadDeadline(time.Now().Add(90 * time.Second))
 			})
 			_ = conn.SetReadDeadline(time.Now().Add(90 * time.Second))
-
-			ticker := time.NewTicker(30 * time.Second)
-			defer ticker.Stop()
-			done := make(chan struct{})
-			defer close(done)
-
-			go func() {
-				for {
-					select {
-					case <-ticker.C:
-						if err := client.WriteControl(websocket.PingMessage, nil, time.Now().Add(10*time.Second)); err != nil {
-							return
-						}
-					case <-done:
-						return
-					}
-				}
-			}()
 
 			for {
 				_, raw, err := conn.ReadMessage()

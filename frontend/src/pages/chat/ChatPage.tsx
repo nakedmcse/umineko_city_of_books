@@ -114,7 +114,7 @@ export function ChatPage() {
     const location = useLocation();
     const navigate = useNavigate();
     const { user } = useAuth();
-    const { addWSListener, sendWSMessage } = useNotifications();
+    const { addWSListener, sendWSMessage, wsEpoch } = useNotifications();
     const [rooms, setRooms] = useState<ChatRoom[]>([]);
     const [activeRoomId, setActiveRoomId] = useState<string | null>(urlRoomId ?? null);
     const [readReceipts, setReadReceipts] = useState<Record<string, Record<string, string>>>({});
@@ -291,7 +291,7 @@ export function ChatPage() {
         return () => {
             sendWSMessage({ type: "leave_room", data: { room_id: activeRoomId } });
         };
-    }, [activeRoomId, sendWSMessage]);
+    }, [activeRoomId, sendWSMessage, wsEpoch]);
 
     useEffect(() => {
         if (!activeRoomId) {
