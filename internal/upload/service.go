@@ -132,11 +132,18 @@ func (s *service) FullDiskPath(urlPath string) string {
 
 func (s *service) DeleteByPrefix(subDir string, prefix string) error {
 	dir := filepath.Join(s.GetUploadDir(), subDir)
-	entries, err := os.ReadDir(dir)
+	info, err := os.Stat(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
 		}
+		return fmt.Errorf("read directory: %w", err)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("read directory: path is not a directory: %s", dir)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
 		return fmt.Errorf("read directory: %w", err)
 	}
 
