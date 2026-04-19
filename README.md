@@ -1,5 +1,16 @@
 # Umineko City of Books
 
+<p align="center">
+  <img src="https://waifuvault.moe/f/65d13bad-a630-4a61-baa2-13502b5ce115/clipboard-image-1776640341031.png" alt="Umineko City of Books" width="900">
+</p>
+
+<p align="center">
+  <sub>
+    Artwork by <a href="https://meta.auaurora.moe/user/alexwithaa21">alexwithaa21</a>
+    (<a href="https://x.com/alexwithaa21">@alexwithaa21</a> on X)
+  </sub>
+</p>
+
 A community platform for fans of Umineko no Naku Koro ni, Higurashi, Ciconia, and the wider When They Cry series. The original goal was a place to declare fan theories as **blue truth**, attach quotes from the game as evidence, and have them debated on two sides: **"With love, it can be seen"** and **"Without love, it cannot be seen"**. It has since grown into a full social platform: theory debates across all three series, a Twitter-style game board, mystery boards, fan art galleries, ship declarations, fanfiction, live reading journals, chat rooms and DMs, secret unlock hunts, live notifications, and themed role-based moderation.
 
 ## Table of Contents
