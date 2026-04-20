@@ -281,16 +281,35 @@ func (s *service) CreateComment(ctx context.Context, secretID string, userID uui
 		baseURL := s.settingsSvc.Get(bgCtx, config.SettingBaseURL)
 		linkURL := fmt.Sprintf("%s/secrets/%s#comment-%s", baseURL, secretID, id)
 
+		var parentAuthor uuid.UUID
 		if req.ParentID != nil {
-			parentAuthor, err := s.secretRepo.GetCommentAuthorID(bgCtx, *req.ParentID)
-			if err != nil || parentAuthor == userID {
-				return
+			if parent, err := s.secretRepo.GetCommentAuthorID(bgCtx, *req.ParentID); err == nil && parent != userID {
+				parentAuthor = parent
+				subject, emailBody := notification.NotifEmail(actor.DisplayName, "replied to your comment", "", linkURL)
+				_ = s.notifService.Notify(bgCtx, dto.NotifyParams{
+					RecipientID:   parentAuthor,
+					Type:          dto.NotifSecretCommentReply,
+					ReferenceType: fmt.Sprintf("secret_comment:%s:%s", secretID, id),
+					ActorID:       userID,
+					EmailSubject:  subject,
+					EmailBody:     emailBody,
+				})
 			}
-			subject, emailBody := notification.NotifEmail(actor.DisplayName, "replied to your comment", "", linkURL)
+		}
+
+		commenters, err := s.secretRepo.GetCommenterIDs(bgCtx, secretID)
+		if err != nil {
+			return
+		}
+		subject, emailBody := notification.NotifEmail(actor.DisplayName, "posted a new comment on a hunt you're following", "", linkURL)
+		for _, rid := range commenters {
+			if rid == userID || rid == parentAuthor {
+				continue
+			}
 			_ = s.notifService.Notify(bgCtx, dto.NotifyParams{
-				RecipientID:   parentAuthor,
-				Type:          dto.NotifSecretCommentReply,
-				ReferenceType: fmt.Sprintf("secret_comment:%s", id),
+				RecipientID:   rid,
+				Type:          dto.NotifSecretCommented,
+				ReferenceType: fmt.Sprintf("secret_comment:%s:%s", secretID, id),
 				ActorID:       userID,
 				EmailSubject:  subject,
 				EmailBody:     emailBody,
@@ -330,7 +349,37 @@ func (s *service) LikeComment(ctx context.Context, userID uuid.UUID, commentID u
 	if blocked, _ := s.blockSvc.IsBlockedEither(ctx, userID, commentAuthorID); blocked {
 		return ErrUserBlocked
 	}
-	return s.secretRepo.LikeComment(ctx, userID, commentID)
+	if err := s.secretRepo.LikeComment(ctx, userID, commentID); err != nil {
+		return err
+	}
+
+	go func() {
+		bgCtx := context.Background()
+		if commentAuthorID == userID {
+			return
+		}
+		secretID, err := s.secretRepo.GetCommentSecretID(bgCtx, commentID)
+		if err != nil || secretID == "" {
+			return
+		}
+		actor, err := s.userRepo.GetByID(bgCtx, userID)
+		if err != nil || actor == nil {
+			return
+		}
+		baseURL := s.settingsSvc.Get(bgCtx, config.SettingBaseURL)
+		linkURL := fmt.Sprintf("%s/secrets/%s#comment-%s", baseURL, secretID, commentID)
+		subject, body := notification.NotifEmail(actor.DisplayName, "liked your comment", "", linkURL)
+		_ = s.notifService.Notify(bgCtx, dto.NotifyParams{
+			RecipientID:   commentAuthorID,
+			Type:          dto.NotifSecretCommentLiked,
+			ReferenceType: fmt.Sprintf("secret_comment:%s:%s", secretID, commentID),
+			ActorID:       userID,
+			EmailSubject:  subject,
+			EmailBody:     body,
+		})
+	}()
+
+	return nil
 }
 
 func (s *service) UnlikeComment(ctx context.Context, userID uuid.UUID, commentID uuid.UUID) error {
@@ -400,6 +449,11 @@ func (s *service) BroadcastSolved(ctx context.Context, parentID string, actor uu
 	if err != nil || user == nil {
 		return
 	}
+	spec, specOK := secrets.Lookup(parentID)
+	solverName := user.DisplayName
+	if solverName == "" {
+		solverName = user.Username
+	}
 	event := dto.SecretSolvedEvent{
 		SecretID: parentID,
 		Solver: dto.UserResponse{
@@ -413,7 +467,41 @@ func (s *service) BroadcastSolved(ctx context.Context, parentID string, actor uu
 	}
 	s.hub.BroadcastToTopic(secretRoomID(parentID), ws.Message{Type: "secret_solved", Data: event})
 
-	if spec, ok := secrets.Lookup(parentID); ok && spec.VanityRoleID != "" {
+	if specOK && spec.VanityRoleID != "" {
 		s.hub.Broadcast(ws.Message{Type: "vanity_roles_changed", Data: map[string]interface{}{}})
+	}
+
+	if specOK && spec.Title != "" {
+		pieceIDs := secrets.PieceIDStrings(spec)
+		participants, err := s.userSecretSvc.GetUserIDsWithAnyPiece(ctx, pieceIDs)
+		if err == nil {
+			closedData := map[string]interface{}{
+				"secret_id":    parentID,
+				"secret_title": spec.Title,
+				"solver":       event.Solver,
+			}
+			baseURL := s.settingsSvc.Get(ctx, config.SettingBaseURL)
+			link := fmt.Sprintf("%s/secrets/%s", baseURL, parentID)
+			subject, emailBody := notification.NotifEmail(solverName, fmt.Sprintf("solved %s before you could. Uu~ try again next time.", spec.Title), "", link)
+			message := fmt.Sprintf("solved %s before you could. Uu~ try again next time.", spec.Title)
+			go func(participants []uuid.UUID, subject, body, msg string) {
+				bgCtx := context.Background()
+				for _, pid := range participants {
+					if pid == actor {
+						continue
+					}
+					_ = s.notifService.Notify(bgCtx, dto.NotifyParams{
+						RecipientID:   pid,
+						Type:          dto.NotifSecretSolvedByOther,
+						ReferenceType: fmt.Sprintf("secret:%s", parentID),
+						ActorID:       actor,
+						Message:       msg,
+						EmailSubject:  subject,
+						EmailBody:     body,
+					})
+					s.hub.SendToUser(pid, ws.Message{Type: "secret_closed", Data: closedData})
+				}
+			}(participants, subject, emailBody, message)
+		}
 	}
 }

@@ -38,6 +38,131 @@ func (_m *MockUserSecretRepository) EXPECT() *MockUserSecretRepository_Expecter 
 	return &MockUserSecretRepository_Expecter{mock: &_m.Mock}
 }
 
+// DeleteSecrets provides a mock function for the type MockUserSecretRepository
+func (_mock *MockUserSecretRepository) DeleteSecrets(ctx context.Context, secretIDs []string) error {
+	ret := _mock.Called(ctx, secretIDs)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteSecrets")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, []string) error); ok {
+		r0 = returnFunc(ctx, secretIDs)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockUserSecretRepository_DeleteSecrets_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteSecrets'
+type MockUserSecretRepository_DeleteSecrets_Call struct {
+	*mock.Call
+}
+
+// DeleteSecrets is a helper method to define mock.On call
+//   - ctx context.Context
+//   - secretIDs []string
+func (_e *MockUserSecretRepository_Expecter) DeleteSecrets(ctx interface{}, secretIDs interface{}) *MockUserSecretRepository_DeleteSecrets_Call {
+	return &MockUserSecretRepository_DeleteSecrets_Call{Call: _e.mock.On("DeleteSecrets", ctx, secretIDs)}
+}
+
+func (_c *MockUserSecretRepository_DeleteSecrets_Call) Run(run func(ctx context.Context, secretIDs []string)) *MockUserSecretRepository_DeleteSecrets_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 []string
+		if args[1] != nil {
+			arg1 = args[1].([]string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockUserSecretRepository_DeleteSecrets_Call) Return(err error) *MockUserSecretRepository_DeleteSecrets_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockUserSecretRepository_DeleteSecrets_Call) RunAndReturn(run func(ctx context.Context, secretIDs []string) error) *MockUserSecretRepository_DeleteSecrets_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetUserIDsWithAnyPiece provides a mock function for the type MockUserSecretRepository
+func (_mock *MockUserSecretRepository) GetUserIDsWithAnyPiece(ctx context.Context, pieceIDs []string) ([]uuid.UUID, error) {
+	ret := _mock.Called(ctx, pieceIDs)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetUserIDsWithAnyPiece")
+	}
+
+	var r0 []uuid.UUID
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, []string) ([]uuid.UUID, error)); ok {
+		return returnFunc(ctx, pieceIDs)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, []string) []uuid.UUID); ok {
+		r0 = returnFunc(ctx, pieceIDs)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]uuid.UUID)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, []string) error); ok {
+		r1 = returnFunc(ctx, pieceIDs)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockUserSecretRepository_GetUserIDsWithAnyPiece_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUserIDsWithAnyPiece'
+type MockUserSecretRepository_GetUserIDsWithAnyPiece_Call struct {
+	*mock.Call
+}
+
+// GetUserIDsWithAnyPiece is a helper method to define mock.On call
+//   - ctx context.Context
+//   - pieceIDs []string
+func (_e *MockUserSecretRepository_Expecter) GetUserIDsWithAnyPiece(ctx interface{}, pieceIDs interface{}) *MockUserSecretRepository_GetUserIDsWithAnyPiece_Call {
+	return &MockUserSecretRepository_GetUserIDsWithAnyPiece_Call{Call: _e.mock.On("GetUserIDsWithAnyPiece", ctx, pieceIDs)}
+}
+
+func (_c *MockUserSecretRepository_GetUserIDsWithAnyPiece_Call) Run(run func(ctx context.Context, pieceIDs []string)) *MockUserSecretRepository_GetUserIDsWithAnyPiece_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 []string
+		if args[1] != nil {
+			arg1 = args[1].([]string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockUserSecretRepository_GetUserIDsWithAnyPiece_Call) Return(uUIDs []uuid.UUID, err error) *MockUserSecretRepository_GetUserIDsWithAnyPiece_Call {
+	_c.Call.Return(uUIDs, err)
+	return _c
+}
+
+func (_c *MockUserSecretRepository_GetUserIDsWithAnyPiece_Call) RunAndReturn(run func(ctx context.Context, pieceIDs []string) ([]uuid.UUID, error)) *MockUserSecretRepository_GetUserIDsWithAnyPiece_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetUserIDsWithSecret provides a mock function for the type MockUserSecretRepository
 func (_mock *MockUserSecretRepository) GetUserIDsWithSecret(ctx context.Context, secretID string) ([]uuid.UUID, error) {
 	ret := _mock.Called(ctx, secretID)
@@ -102,6 +227,72 @@ func (_c *MockUserSecretRepository_GetUserIDsWithSecret_Call) Return(uUIDs []uui
 }
 
 func (_c *MockUserSecretRepository_GetUserIDsWithSecret_Call) RunAndReturn(run func(ctx context.Context, secretID string) ([]uuid.UUID, error)) *MockUserSecretRepository_GetUserIDsWithSecret_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// IsSolvedByAnyone provides a mock function for the type MockUserSecretRepository
+func (_mock *MockUserSecretRepository) IsSolvedByAnyone(ctx context.Context, secretID string) (bool, error) {
+	ret := _mock.Called(ctx, secretID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsSolvedByAnyone")
+	}
+
+	var r0 bool
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (bool, error)); ok {
+		return returnFunc(ctx, secretID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) bool); ok {
+		r0 = returnFunc(ctx, secretID)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = returnFunc(ctx, secretID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockUserSecretRepository_IsSolvedByAnyone_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsSolvedByAnyone'
+type MockUserSecretRepository_IsSolvedByAnyone_Call struct {
+	*mock.Call
+}
+
+// IsSolvedByAnyone is a helper method to define mock.On call
+//   - ctx context.Context
+//   - secretID string
+func (_e *MockUserSecretRepository_Expecter) IsSolvedByAnyone(ctx interface{}, secretID interface{}) *MockUserSecretRepository_IsSolvedByAnyone_Call {
+	return &MockUserSecretRepository_IsSolvedByAnyone_Call{Call: _e.mock.On("IsSolvedByAnyone", ctx, secretID)}
+}
+
+func (_c *MockUserSecretRepository_IsSolvedByAnyone_Call) Run(run func(ctx context.Context, secretID string)) *MockUserSecretRepository_IsSolvedByAnyone_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockUserSecretRepository_IsSolvedByAnyone_Call) Return(b bool, err error) *MockUserSecretRepository_IsSolvedByAnyone_Call {
+	_c.Call.Return(b, err)
+	return _c
+}
+
+func (_c *MockUserSecretRepository_IsSolvedByAnyone_Call) RunAndReturn(run func(ctx context.Context, secretID string) (bool, error)) *MockUserSecretRepository_IsSolvedByAnyone_Call {
 	_c.Call.Return(run)
 	return _c
 }

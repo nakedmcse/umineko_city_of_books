@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"umineko_city_of_books/internal/repository"
+	"umineko_city_of_books/internal/secrets"
 
 	"github.com/google/uuid"
 )
@@ -217,6 +218,18 @@ func (r *Resolver) metaForPath(ctx context.Context, path string) *Meta {
 		if _, err := uuid.Parse(parts[1]); err == nil {
 			return r.roomMeta(ctx, parts[1])
 		}
+	}
+
+	if len(parts) == 1 && parts[0] == "secrets" {
+		return &Meta{
+			Title:       "Secrets - Umineko City of Books",
+			Description: "Quiet things scattered across the site. Open hunts, live progress leaderboards, and the people who spoke the answer first.",
+			URL:         r.baseURL + "/secrets",
+		}
+	}
+
+	if len(parts) == 2 && parts[0] == "secrets" {
+		return r.secretMeta(parts[1])
 	}
 
 	if len(parts) == 2 && parts[0] == "gallery" {
@@ -552,6 +565,25 @@ func (r *Resolver) journalMeta(ctx context.Context, idStr string) *Meta {
 		Description: desc,
 		Image:       journal.Author.AvatarURL,
 		URL:         fmt.Sprintf("%s/journals/%s", r.baseURL, idStr),
+	}
+}
+
+func (r *Resolver) secretMeta(id string) *Meta {
+	spec, ok := secrets.Lookup(id)
+	if !ok || spec.Title == "" {
+		return nil
+	}
+	desc := spec.Description
+	if desc == "" {
+		desc = "A hidden hunt on Umineko City of Books."
+	}
+	if len(desc) > 200 {
+		desc = desc[:197] + "..."
+	}
+	return &Meta{
+		Title:       fmt.Sprintf("%s - Umineko City of Books", spec.Title),
+		Description: desc,
+		URL:         fmt.Sprintf("%s/secrets/%s", r.baseURL, id),
 	}
 }
 

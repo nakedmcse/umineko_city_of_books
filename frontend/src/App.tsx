@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useState } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router";
+import { BrowserRouter, Link, Navigate, Route, Routes } from "react-router";
 import { useSiteInfo } from "./hooks/useSiteInfo";
 import { useTheme } from "./hooks/useTheme";
 import { useAuth } from "./hooks/useAuth";
@@ -10,6 +10,7 @@ import { Sidebar } from "./components/layout/Sidebar/Sidebar";
 import { Butterflies } from "./components/layout/Butterflies/Butterflies";
 import { ProtectedRoute } from "./components/ProtectedRoute/ProtectedRoute";
 import { StaleVersionBanner } from "./components/StaleVersionBanner/StaleVersionBanner";
+import { Toast } from "./components/Toast/Toast";
 import { MaintenancePage } from "./pages/maintenance/MaintenancePage";
 import { LandingPage } from "./pages/landing/LandingPage";
 import { linkify } from "./utils/linkify";
@@ -114,6 +115,39 @@ function RouteFallback() {
     return <div className="loading">Loading...</div>;
 }
 
+interface SecretClosedDetail {
+    secret_id: string;
+    secret_title: string;
+    solver: { display_name: string; username: string };
+}
+
+function SecretClosedToast() {
+    const [event, setEvent] = useState<SecretClosedDetail | null>(null);
+
+    useEffect(() => {
+        function handler(e: Event) {
+            const detail = (e as CustomEvent<SecretClosedDetail>).detail;
+            if (detail && detail.secret_id && detail.solver) {
+                setEvent(detail);
+            }
+        }
+        window.addEventListener("secret-closed", handler);
+        return () => window.removeEventListener("secret-closed", handler);
+    }, []);
+
+    if (!event) {
+        return null;
+    }
+    const name = event.solver.display_name || event.solver.username;
+    return (
+        <Toast variant="arcane" duration={10000} onDismiss={() => setEvent(null)}>
+            <Link to={`/secrets/${event.secret_id}`} style={{ color: "inherit" }}>
+                Uu~ <strong>{name}</strong> solved <em>{event.secret_title}</em> before you could. Try again next time.
+            </Link>
+        </Toast>
+    );
+}
+
 function AppLayout() {
     const siteInfo = useSiteInfo();
     const { particlesEnabled } = useTheme();
@@ -144,6 +178,7 @@ function AppLayout() {
                 <Header onToggleSidebar={() => setSidebarOpen(prev => !prev)} />
                 <StaleVersionBanner />
                 <AnnouncementBanner />
+                <SecretClosedToast />
                 <main className="main-content">
                     <Suspense fallback={<RouteFallback />}>
                         <Routes>

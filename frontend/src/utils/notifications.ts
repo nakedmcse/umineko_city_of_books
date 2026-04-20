@@ -102,6 +102,20 @@ function routeByReferenceType(notif: Notification): string {
         }
         return `/journals/${notif.reference_id}`;
     }
+    if (refType.startsWith("secret_comment:")) {
+        const parts = refType.split(":");
+        if (parts.length === 3) {
+            return `/secrets/${parts[1]}#comment-${parts[2]}`;
+        }
+        return "/secrets";
+    }
+    if (refType.startsWith("secret:")) {
+        const parts = refType.split(":");
+        if (parts.length === 2) {
+            return `/secrets/${parts[1]}`;
+        }
+        return "/secrets";
+    }
     return `/theory/${notif.reference_id}`;
 }
 
@@ -395,6 +409,26 @@ const notificationConfigs: Record<NotificationType, NotificationConfig> = {
         text: "unbanned you from a chat room",
         category: "moderation",
         route: notif => `/rooms/${notif.reference_id}`,
+    },
+    secret_comment_reply: {
+        text: "replied to your comment on a hunt",
+        category: "social",
+        route: routeByReferenceType,
+    },
+    secret_commented: {
+        text: "commented on a hunt you're watching",
+        category: "social",
+        route: routeByReferenceType,
+    },
+    secret_comment_liked: {
+        text: "liked your comment on a hunt",
+        category: "social",
+        route: routeByReferenceType,
+    },
+    secret_solved_by_other: {
+        text: "solved a hunt before you could",
+        category: "social",
+        route: routeByReferenceType,
     },
 };
 

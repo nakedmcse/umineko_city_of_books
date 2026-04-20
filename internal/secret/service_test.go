@@ -47,6 +47,11 @@ func newTestService(t *testing.T) (*service, *testMocks) {
 	mediaProc := &media.Processor{}
 	svc := NewService(secretRepo, userSecretRepo, userRepo, authzSvc, blockSvc, notif, settingsSvc, uploadSvc, mediaProc, hub, contentfilter.New()).(*service)
 
+	secretRepo.EXPECT().GetCommentSecretID(mock.Anything, mock.Anything).Return("", nil).Maybe()
+	userRepo.EXPECT().GetByID(mock.Anything, mock.Anything).Return(nil, nil).Maybe()
+	settingsSvc.EXPECT().Get(mock.Anything, mock.Anything).Return("").Maybe()
+	notif.EXPECT().Notify(mock.Anything, mock.Anything).Return(nil).Maybe()
+
 	return svc, &testMocks{
 		secretRepo:     secretRepo,
 		userSecretRepo: userSecretRepo,

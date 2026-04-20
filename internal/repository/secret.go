@@ -40,6 +40,7 @@ type (
 		GetCommentMediaBatch(ctx context.Context, commentIDs []uuid.UUID) (map[uuid.UUID][]model.CommentMediaRow, error)
 
 		CountCommentsBySecret(ctx context.Context, secretIDs []string) (map[string]int, error)
+		GetCommenterIDs(ctx context.Context, secretID string) ([]uuid.UUID, error)
 	}
 
 	SecretSolver struct {
@@ -489,6 +490,27 @@ func (r *secretRepository) GetCommentMediaBatch(ctx context.Context, commentIDs 
 		result[m.CommentID] = append(result[m.CommentID], m)
 	}
 	return result, rows.Err()
+}
+
+func (r *secretRepository) GetCommenterIDs(ctx context.Context, secretID string) ([]uuid.UUID, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT DISTINCT user_id FROM secret_comments WHERE secret_id = ?`,
+		secretID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list commenter ids: %w", err)
+	}
+	defer rows.Close()
+
+	var ids []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan commenter id: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
 }
 
 func (r *secretRepository) CountCommentsBySecret(ctx context.Context, secretIDs []string) (map[string]int, error) {

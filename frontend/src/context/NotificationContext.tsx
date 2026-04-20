@@ -78,6 +78,9 @@ export function NotificationProvider({ children }: PropsWithChildren) {
                         setChatUnreadCount(data.total);
                     }
                 }
+                if (msg.type === "secret_closed") {
+                    window.dispatchEvent(new CustomEvent("secret-closed", { detail: msg.data }));
+                }
                 for (const handler of wsListenersRef.current) {
                     handler(msg);
                 }

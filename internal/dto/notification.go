@@ -95,6 +95,7 @@ const (
 	NotifSecretCommentReply       NotificationType = "secret_comment_reply"
 	NotifSecretCommented          NotificationType = "secret_commented"
 	NotifSecretCommentLiked       NotificationType = "secret_comment_liked"
+	NotifSecretSolvedByOther      NotificationType = "secret_solved_by_other"
 	NotifChatRoomBanned           NotificationType = "chat_room_banned"
 	NotifChatRoomKicked           NotificationType = "chat_room_kicked"
 	NotifChatRoomUnbanned         NotificationType = "chat_room_unbanned"

@@ -79,6 +79,18 @@ func (s *Service) unlockSecret(ctx fiber.Ctx) error {
 	if hex.EncodeToString(sum[:]) != spec.ExpectedHash {
 		return utils.BadRequest(ctx, "invalid request")
 	}
+
+	parent, hasParent := secrets.ParentOf(spec.ID)
+	if hasParent && parent.Title != "" {
+		alreadySolved, err := s.UserSecretRepo.IsSolvedByAnyone(ctx.Context(), string(parent.ID))
+		if err != nil {
+			return utils.InternalError(ctx, "failed to check hunt state")
+		}
+		if alreadySolved {
+			return utils.BadRequest(ctx, "hunt already solved")
+		}
+	}
+
 	if len(spec.PieceIDs) > 0 {
 		owned, err := s.UserSecretRepo.ListForUser(ctx.Context(), userID)
 		if err != nil {
@@ -98,8 +110,7 @@ func (s *Service) unlockSecret(ctx fiber.Ctx) error {
 		return utils.InternalError(ctx, "failed to save")
 	}
 
-	parent, ok := secrets.ParentOf(spec.ID)
-	if ok && parent.Title != "" && s.SecretService != nil {
+	if hasParent && parent.Title != "" && s.SecretService != nil {
 		parentID := string(parent.ID)
 		if spec.ID == parent.ID {
 			s.SecretService.BroadcastSolved(ctx.Context(), parentID, userID, time.Now().UTC().Format(time.RFC3339))
