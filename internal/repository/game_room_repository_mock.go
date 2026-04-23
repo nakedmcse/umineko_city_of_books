@@ -6,6 +6,7 @@ package repository
 
 import (
 	"context"
+	"time"
 	"umineko_city_of_books/internal/dto"
 
 	"github.com/google/uuid"
@@ -865,6 +866,74 @@ func (_c *MockGameRoomRepository_ListForUser_Call) Return(gameRoomRows []GameRoo
 }
 
 func (_c *MockGameRoomRepository_ListForUser_Call) RunAndReturn(run func(ctx context.Context, userID uuid.UUID, gameType string, statuses []dto.GameStatus, limit int, offset int) ([]GameRoomRow, int, error)) *MockGameRoomRepository_ListForUser_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListIdleActive provides a mock function for the type MockGameRoomRepository
+func (_mock *MockGameRoomRepository) ListIdleActive(ctx context.Context, idleSince time.Time) ([]GameRoomRow, error) {
+	ret := _mock.Called(ctx, idleSince)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListIdleActive")
+	}
+
+	var r0 []GameRoomRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, time.Time) ([]GameRoomRow, error)); ok {
+		return returnFunc(ctx, idleSince)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, time.Time) []GameRoomRow); ok {
+		r0 = returnFunc(ctx, idleSince)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]GameRoomRow)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, time.Time) error); ok {
+		r1 = returnFunc(ctx, idleSince)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockGameRoomRepository_ListIdleActive_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListIdleActive'
+type MockGameRoomRepository_ListIdleActive_Call struct {
+	*mock.Call
+}
+
+// ListIdleActive is a helper method to define mock.On call
+//   - ctx context.Context
+//   - idleSince time.Time
+func (_e *MockGameRoomRepository_Expecter) ListIdleActive(ctx interface{}, idleSince interface{}) *MockGameRoomRepository_ListIdleActive_Call {
+	return &MockGameRoomRepository_ListIdleActive_Call{Call: _e.mock.On("ListIdleActive", ctx, idleSince)}
+}
+
+func (_c *MockGameRoomRepository_ListIdleActive_Call) Run(run func(ctx context.Context, idleSince time.Time)) *MockGameRoomRepository_ListIdleActive_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 time.Time
+		if args[1] != nil {
+			arg1 = args[1].(time.Time)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockGameRoomRepository_ListIdleActive_Call) Return(gameRoomRows []GameRoomRow, err error) *MockGameRoomRepository_ListIdleActive_Call {
+	_c.Call.Return(gameRoomRows, err)
+	return _c
+}
+
+func (_c *MockGameRoomRepository_ListIdleActive_Call) RunAndReturn(run func(ctx context.Context, idleSince time.Time) ([]GameRoomRow, error)) *MockGameRoomRepository_ListIdleActive_Call {
 	_c.Call.Return(run)
 	return _c
 }
