@@ -58,6 +58,34 @@ export function useGameRoom(roomId: string | undefined): UseGameRoomResult {
             if (!currentRoomId) {
                 return;
             }
+            if (msg.type === "game_your_turn") {
+                const data = msg.data as { room_id?: string; game_type?: string };
+                if (data.room_id !== currentRoomId) {
+                    return;
+                }
+                const tabHidden = document.visibilityState !== "visible" || !document.hasFocus();
+                if (!tabHidden) {
+                    return;
+                }
+                if (
+                    typeof window !== "undefined" &&
+                    "Notification" in window &&
+                    window.Notification.permission === "granted"
+                ) {
+                    const label = data.game_type ?? "game";
+                    const notif = new window.Notification(`Your move in ${label}`, {
+                        body: "It's your turn.",
+                        icon: "/favicon/android-chrome-192x192.png",
+                        tag: `game-turn-${currentRoomId}`,
+                    });
+                    notif.onclick = () => {
+                        window.focus();
+                        window.location.href = `/games/${data.game_type ?? "chess"}/${currentRoomId}`;
+                        notif.close();
+                    };
+                }
+                return;
+            }
             if (
                 msg.type !== "game_room_action" &&
                 msg.type !== "game_room_started" &&

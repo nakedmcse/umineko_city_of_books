@@ -90,7 +90,7 @@ function resultLabel(
     viewerId: string | null,
     isSpectator: boolean,
 ): { text: string; tone: "win" | "loss" | "draw" | "neutral" } {
-    if (room.status !== "finished") {
+    if (room.status !== "finished" && room.status !== "abandoned") {
         return { text: "", tone: "neutral" };
     }
     if (!room.winner_user_id) {
@@ -208,6 +208,7 @@ export function ChessBoardView({ room, viewer, isSpectator, onMove, onResign }: 
                 <div className={styles.statusLeft}>
                     <span className={`${styles.playerDot} ${black?.connected ? styles.playerDotOn : ""}`} />
                     <span className={styles.playerName}>{black?.display_name ?? "Black"}</span>
+                    <span className={styles.colourLabel}>(Black)</span>
                     <span
                         className={`${styles.turnMarker} ${
                             isMyTurn && mySlot === 1
@@ -235,6 +236,7 @@ export function ChessBoardView({ room, viewer, isSpectator, onMove, onResign }: 
                     >
                         {room.turn_user_id === white?.user_id && room.status === "active" ? "to move" : ""}
                     </span>
+                    <span className={styles.colourLabel}>(White)</span>
                     <span className={styles.playerName}>{white?.display_name ?? "White"}</span>
                     <span className={`${styles.playerDot} ${white?.connected ? styles.playerDotOn : ""}`} />
                 </div>
@@ -262,7 +264,7 @@ export function ChessBoardView({ room, viewer, isSpectator, onMove, onResign }: 
                 />
             </div>
 
-            {room.status === "finished" && (
+            {(room.status === "finished" || room.status === "abandoned") && (
                 <div className={styles.gameOver}>
                     <div className={styles.result}>
                         <span

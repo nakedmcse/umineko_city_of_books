@@ -75,6 +75,12 @@
     font-weight: 600;
 }
 
+.colourLabel {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
 .turnMarker {
     font-size: 0.85rem;
     color: var(--text-muted);

@@ -563,7 +563,7 @@ func (s *service) PostSpectatorChat(ctx context.Context, roomID, userID uuid.UUI
 	if row == nil {
 		return nil, ErrNotFound
 	}
-	if row.Status != string(dto.GameStatusActive) && row.Status != string(dto.GameStatusFinished) {
+	if row.Status == string(dto.GameStatusPending) || row.Status == string(dto.GameStatusDeclined) {
 		return nil, ErrRoomNotActive
 	}
 	isParticipant, err := s.repo.IsParticipant(ctx, roomID, userID)
@@ -648,7 +648,7 @@ func (s *service) HandleClientJoin(ctx context.Context, userID, roomID uuid.UUID
 		s.mu.Unlock()
 		_ = s.repo.TouchPlayerSeen(ctx, roomID, userID)
 	} else {
-		if row.Status != string(dto.GameStatusActive) && row.Status != string(dto.GameStatusFinished) {
+		if row.Status == string(dto.GameStatusPending) || row.Status == string(dto.GameStatusDeclined) {
 			s.hub.LeaveTopic(gameTopic, userID)
 			return
 		}
@@ -742,7 +742,7 @@ func (s *service) graceExpired(userID, roomID uuid.UUID) {
 		return
 	}
 	s.broadcast(room, "game_room_finished", map[string]any{"abandoned_by": userID.String()})
-	s.notifyFinished(ctx, room, userID)
+	s.notifyFinished(ctx, room, uuid.Nil)
 	s.broadcastLiveGamesCount(ctx)
 }
 
@@ -898,8 +898,31 @@ func (s *service) broadcast(room *dto.GameRoom, eventType string, extra map[stri
 	}
 }
 
+func (s *service) isViewing(roomID, userID uuid.UUID) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	st, ok := s.rooms[roomID]
+	if !ok {
+		return false
+	}
+	return st.players[userID] > 0
+}
+
 func (s *service) notifyTurn(ctx context.Context, room *dto.GameRoom) {
-	if room.TurnUserID == nil || s.notifSvc == nil {
+	if room.TurnUserID == nil {
+		return
+	}
+	if s.isViewing(room.ID, *room.TurnUserID) {
+		s.hub.SendToUser(*room.TurnUserID, ws.Message{
+			Type: "game_your_turn",
+			Data: map[string]any{
+				"room_id":   room.ID.String(),
+				"game_type": string(room.GameType),
+			},
+		})
+		return
+	}
+	if s.notifSvc == nil {
 		return
 	}
 	var actorID uuid.UUID
