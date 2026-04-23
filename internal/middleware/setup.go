@@ -47,6 +47,7 @@ func Setup(app *fiber.App, settingsSvc settings.Service, sessionMgr *session.Man
 	app.Server().MaxRequestBodySize = settingsSvc.GetInt(context.Background(), config.SettingMaxBodySize)
 
 	app.Use(Tracing())
+	app.Use(SecurityHeaders())
 	app.Use(etag.New())
 
 	app.Use(func(ctx fiber.Ctx) error {

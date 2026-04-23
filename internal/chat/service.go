@@ -36,6 +36,9 @@ const (
 	systemAdminsName = "Administrators"
 	systemModsDesc   = "Private staff room for moderators, admins, and super admins. Membership is managed automatically."
 	systemAdminsDesc = "Private room for admins and super admins. Membership is managed automatically."
+
+	veryGoodTrigger  = "<VERY GOOOOOD>"
+	veryGoodAudioURL = "https://quotes.auaurora.moe/api/v1/umineko/audio/voice/46/64501229"
 )
 
 var (
@@ -1502,6 +1505,20 @@ func (s *service) SendMessage(ctx context.Context, senderID, roomID uuid.UUID, r
 		}
 		s.sideEffectsWG.Add(1)
 		go s.dispatchPostSendSideEffects(roomID, senderID, msgID, recipients, roomRow, mentionedIDs, replyToAuthor, isGroup)
+
+		if req.Body == veryGoodTrigger {
+			audioMsg := ws.Message{
+				Type: "chat_audio",
+				Data: map[string]any{
+					"room_id": roomID.String(),
+					"url":     veryGoodAudioURL,
+					"volume":  0.5,
+				},
+			}
+			for i := 0; i < len(members); i++ {
+				s.hub.SendToUser(members[i], audioMsg)
+			}
+		}
 	}
 
 	return resp, nil
@@ -1943,6 +1960,10 @@ func (s *service) SetMemberNicknameAsMod(ctx context.Context, roomID, actorID, t
 		return nil, err
 	}
 
+	if err := s.filterTexts(ctx, nickname); err != nil {
+		return nil, err
+	}
+
 	nickname = strings.TrimSpace(nickname)
 	if len(nickname) > 32 {
 		nickname = nickname[:32]
@@ -2275,6 +2296,7 @@ func (s *service) AddReaction(ctx context.Context, messageID, userID uuid.UUID, 
 	}
 
 	displayName := s.resolveMemberDisplayName(ctx, msg.RoomID, userID)
+	count, _ := s.chatRepo.CountReactions(ctx, messageID, emoji)
 	members, _ := s.chatRepo.GetRoomMembers(ctx, msg.RoomID)
 	event := ws.Message{
 		Type: "chat_reaction_added",
@@ -2284,6 +2306,7 @@ func (s *service) AddReaction(ctx context.Context, messageID, userID uuid.UUID, 
 			"emoji":        emoji,
 			"user_id":      userID,
 			"display_name": displayName,
+			"count":        count,
 		},
 	}
 	for _, mid := range members {
@@ -2322,6 +2345,7 @@ func (s *service) RemoveReaction(ctx context.Context, messageID, userID uuid.UUI
 	}
 
 	displayName := s.resolveMemberDisplayName(ctx, msg.RoomID, userID)
+	count, _ := s.chatRepo.CountReactions(ctx, messageID, emoji)
 	members, _ := s.chatRepo.GetRoomMembers(ctx, msg.RoomID)
 	event := ws.Message{
 		Type: "chat_reaction_removed",
@@ -2331,6 +2355,7 @@ func (s *service) RemoveReaction(ctx context.Context, messageID, userID uuid.UUI
 			"emoji":        emoji,
 			"user_id":      userID,
 			"display_name": displayName,
+			"count":        count,
 		},
 	}
 	for _, mid := range members {

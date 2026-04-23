@@ -98,3 +98,11 @@ export const NotFoundPage = named(() => import("./notfound/NotFoundPage"), "NotF
 //  Secrets
 export const SecretsListPage = named(() => import("./secrets/SecretsListPage"), "SecretsListPage");
 export const SecretDetailPage = named(() => import("./secrets/SecretDetailPage"), "SecretDetailPage");
+
+//  Games
+export const GamesListPage = named(() => import("./games/GamesListPage"), "GamesListPage");
+export const LiveGamesPage = named(() => import("./games/LiveGamesPage"), "LiveGamesPage");
+export const PastGamesPage = named(() => import("./games/PastGamesPage"), "PastGamesPage");
+export const GameHubPage = named(() => import("./games/GameHubPage"), "GameHubPage");
+export const NewChessGamePage = named(() => import("./games/NewChessGamePage"), "NewChessGamePage");
+export const ChessGamePage = named(() => import("./games/ChessGamePage"), "ChessGamePage");
