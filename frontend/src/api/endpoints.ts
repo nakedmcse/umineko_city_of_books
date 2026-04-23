@@ -1955,3 +1955,11 @@ export async function getSpectatorChat(roomId: string): Promise<SpectatorChatRes
 export async function postSpectatorChat(roomId: string, body: string): Promise<SpectatorMessage> {
     return apiPost<SpectatorMessage, { body: string }>(`/game-rooms/${roomId}/chat`, { body });
 }
+
+export async function getPlayerChat(roomId: string): Promise<SpectatorChatResponse> {
+    return apiFetch<SpectatorChatResponse>(`/game-rooms/${roomId}/player-chat`);
+}
+
+export async function postPlayerChat(roomId: string, body: string): Promise<SpectatorMessage> {
+    return apiPost<SpectatorMessage, { body: string }>(`/game-rooms/${roomId}/player-chat`, { body });
+}

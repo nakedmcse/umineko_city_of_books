@@ -27,6 +27,8 @@ func (s *Service) getAllGameRoomRoutes() []FSetupRoute {
 		s.setupGameScoreboardRoute,
 		s.setupGetSpectatorChatRoute,
 		s.setupPostSpectatorChatRoute,
+		s.setupGetPlayerChatRoute,
+		s.setupPostPlayerChatRoute,
 	}
 }
 
@@ -80,6 +82,14 @@ func (s *Service) setupGetSpectatorChatRoute(r fiber.Router) {
 
 func (s *Service) setupPostSpectatorChatRoute(r fiber.Router) {
 	r.Post("/game-rooms/:id/chat", middleware.RequireAuth(s.AuthSession, s.AuthzService), s.postSpectatorChat)
+}
+
+func (s *Service) setupGetPlayerChatRoute(r fiber.Router) {
+	r.Get("/game-rooms/:id/player-chat", middleware.RequireAuth(s.AuthSession, s.AuthzService), s.getPlayerChat)
+}
+
+func (s *Service) setupPostPlayerChatRoute(r fiber.Router) {
+	r.Post("/game-rooms/:id/player-chat", middleware.RequireAuth(s.AuthSession, s.AuthzService), s.postPlayerChat)
 }
 
 func gameRoomError(ctx fiber.Ctx, err error) error {
@@ -184,7 +194,8 @@ func (s *Service) getSpectatorChat(ctx fiber.Ctx) error {
 	if !ok {
 		return nil
 	}
-	resp, err := s.GameRoomService.GetSpectatorChat(ctx.Context(), roomID)
+	viewerID := utils.UserID(ctx)
+	resp, err := s.GameRoomService.GetSpectatorChat(ctx.Context(), roomID, viewerID)
 	if err != nil {
 		return gameRoomError(ctx, err)
 	}
@@ -202,6 +213,39 @@ func (s *Service) postSpectatorChat(ctx fiber.Ctx) error {
 		return nil
 	}
 	msg, err := s.GameRoomService.PostSpectatorChat(ctx.Context(), roomID, userID, req.Body)
+	if err != nil {
+		if utils.MapFilterError(ctx, err) {
+			return nil
+		}
+		return gameRoomError(ctx, err)
+	}
+	return ctx.Status(fiber.StatusCreated).JSON(msg)
+}
+
+func (s *Service) getPlayerChat(ctx fiber.Ctx) error {
+	viewerID := utils.UserID(ctx)
+	roomID, ok := utils.ParseIDParam(ctx, "id")
+	if !ok {
+		return nil
+	}
+	resp, err := s.GameRoomService.GetPlayerChat(ctx.Context(), roomID, viewerID)
+	if err != nil {
+		return gameRoomError(ctx, err)
+	}
+	return ctx.JSON(resp)
+}
+
+func (s *Service) postPlayerChat(ctx fiber.Ctx) error {
+	userID := utils.UserID(ctx)
+	roomID, ok := utils.ParseIDParam(ctx, "id")
+	if !ok {
+		return nil
+	}
+	req, ok := utils.BindJSON[dto.SpectatorChatRequest](ctx)
+	if !ok {
+		return nil
+	}
+	msg, err := s.GameRoomService.PostPlayerChat(ctx.Context(), roomID, userID, req.Body)
 	if err != nil {
 		if utils.MapFilterError(ctx, err) {
 			return nil

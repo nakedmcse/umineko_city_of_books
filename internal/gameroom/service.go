@@ -51,7 +51,9 @@ type (
 		Resign(ctx context.Context, roomID, userID uuid.UUID) (*dto.GameRoom, error)
 		Scoreboard(ctx context.Context, gameType dto.GameType) (*dto.GameScoreboardResponse, error)
 		PostSpectatorChat(ctx context.Context, roomID, userID uuid.UUID, body string) (*dto.SpectatorMessage, error)
-		GetSpectatorChat(ctx context.Context, roomID uuid.UUID) (*dto.SpectatorChatResponse, error)
+		GetSpectatorChat(ctx context.Context, roomID, viewerID uuid.UUID) (*dto.SpectatorChatResponse, error)
+		PostPlayerChat(ctx context.Context, roomID, userID uuid.UUID, body string) (*dto.SpectatorMessage, error)
+		GetPlayerChat(ctx context.Context, roomID, viewerID uuid.UUID) (*dto.SpectatorChatResponse, error)
 		HandleClientJoin(ctx context.Context, userID, roomID uuid.UUID)
 		HandleClientLeave(userID, roomID uuid.UUID)
 	}
@@ -62,6 +64,7 @@ type (
 		timers         map[uuid.UUID]*time.Timer
 		disconnectedAt map[uuid.UUID]time.Time
 		chat           []dto.SpectatorMessage
+		playerChat     []dto.SpectatorMessage
 	}
 
 	service struct {
@@ -608,13 +611,109 @@ func (s *service) PostSpectatorChat(ctx context.Context, roomID, userID uuid.UUI
 	return &msg, nil
 }
 
-func (s *service) GetSpectatorChat(_ context.Context, roomID uuid.UUID) (*dto.SpectatorChatResponse, error) {
+func (s *service) GetSpectatorChat(ctx context.Context, roomID, viewerID uuid.UUID) (*dto.SpectatorChatResponse, error) {
+	if viewerID != uuid.Nil {
+		isParticipant, err := s.repo.IsParticipant(ctx, roomID, viewerID)
+		if err != nil {
+			return nil, err
+		}
+		if isParticipant {
+			return nil, ErrPlayersCantChat
+		}
+	}
 	s.mu.Lock()
 	st, ok := s.rooms[roomID]
 	var msgs []dto.SpectatorMessage
 	if ok {
 		msgs = make([]dto.SpectatorMessage, len(st.chat))
 		copy(msgs, st.chat)
+	}
+	s.mu.Unlock()
+	return &dto.SpectatorChatResponse{Messages: msgs}, nil
+}
+
+func (s *service) PostPlayerChat(ctx context.Context, roomID, userID uuid.UUID, body string) (*dto.SpectatorMessage, error) {
+	body = strings.TrimSpace(body)
+	if body == "" {
+		return nil, ErrEmptyChat
+	}
+	if len(body) > maxChatBodyLen {
+		body = body[:maxChatBodyLen]
+	}
+	row, err := s.repo.GetRoom(ctx, roomID)
+	if err != nil {
+		return nil, err
+	}
+	if row == nil {
+		return nil, ErrNotFound
+	}
+	if row.Status == string(dto.GameStatusPending) || row.Status == string(dto.GameStatusDeclined) {
+		return nil, ErrRoomNotActive
+	}
+	isParticipant, err := s.repo.IsParticipant(ctx, roomID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if !isParticipant {
+		return nil, ErrNotParticipant
+	}
+	if s.contentFilter != nil {
+		if err := s.contentFilter.Check(ctx, body); err != nil {
+			return nil, err
+		}
+	}
+	u, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil || u == nil {
+		return nil, ErrOpponentInactive
+	}
+	msg := dto.SpectatorMessage{
+		ID:        uuid.NewString(),
+		UserID:    userID,
+		User:      *u.ToResponse(),
+		Body:      body,
+		CreatedAt: time.Now().UTC().Format(time.RFC3339),
+	}
+
+	s.mu.Lock()
+	st := s.stateFor(roomID)
+	st.playerChat = append(st.playerChat, msg)
+	if len(st.playerChat) > maxChatMessages {
+		st.playerChat = st.playerChat[len(st.playerChat)-maxChatMessages:]
+	}
+	s.mu.Unlock()
+
+	players, err := s.loadPlayers(ctx, roomID)
+	if err == nil {
+		for _, p := range players {
+			s.hub.SendToUser(p.UserID, ws.Message{
+				Type: "player_chat_message",
+				Data: map[string]any{
+					"room_id": roomID.String(),
+					"message": msg,
+				},
+			})
+		}
+	}
+	return &msg, nil
+}
+
+func (s *service) GetPlayerChat(ctx context.Context, roomID, viewerID uuid.UUID) (*dto.SpectatorChatResponse, error) {
+	if viewerID == uuid.Nil {
+		return nil, ErrNotParticipant
+	}
+	isParticipant, err := s.repo.IsParticipant(ctx, roomID, viewerID)
+	if err != nil {
+		return nil, err
+	}
+	if !isParticipant {
+		return nil, ErrNotParticipant
+	}
+	s.mu.Lock()
+	st, ok := s.rooms[roomID]
+	var msgs []dto.SpectatorMessage
+	if ok {
+		msgs = make([]dto.SpectatorMessage, len(st.playerChat))
+		copy(msgs, st.playerChat)
 	}
 	s.mu.Unlock()
 	return &dto.SpectatorChatResponse{Messages: msgs}, nil
@@ -845,7 +944,7 @@ func (s *service) hydrateRoom(ctx context.Context, row *repository.GameRoomRow) 
 	}
 
 	var stats json.RawMessage
-	if row.Status == string(dto.GameStatusFinished) || row.Status == string(dto.GameStatusAbandoned) {
+	if row.Status == string(dto.GameStatusActive) || row.Status == string(dto.GameStatusFinished) || row.Status == string(dto.GameStatusAbandoned) {
 		if handler, ok := s.handlers[dto.GameType(row.GameType)]; ok {
 			finished := ""
 			if finishedAt != nil {

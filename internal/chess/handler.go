@@ -208,16 +208,20 @@ func classifyResult(result string, game *chesslib.Game) string {
 }
 
 func durationSeconds(createdAt, finishedAt string) int {
-	if createdAt == "" || finishedAt == "" {
+	if createdAt == "" {
 		return 0
 	}
 	start, err := parseDBTime(createdAt)
 	if err != nil {
 		return 0
 	}
-	end, err := parseDBTime(finishedAt)
-	if err != nil {
-		return 0
+	end := time.Now().UTC()
+	if finishedAt != "" {
+		parsed, err := parseDBTime(finishedAt)
+		if err != nil {
+			return 0
+		}
+		end = parsed
 	}
 	d := end.Sub(start)
 	if d < 0 {

@@ -5,6 +5,7 @@ import { useGameRoom } from "../../hooks/useGameRoom";
 import * as api from "../../api/endpoints";
 import { ChessBoardView } from "../../components/chess/ChessBoardView";
 import { SpectatorChat } from "../../components/chess/SpectatorChat";
+import { PlayerChat } from "../../components/chess/PlayerChat";
 import { Button } from "../../components/Button/Button";
 import styles from "./GamesPages.module.css";
 
@@ -118,11 +119,13 @@ export function ChessGamePage() {
                     onResign={handleResign}
                 />
             </div>
-            {!isParticipant && (
-                <div className={styles.chatColumn}>
+            <div className={styles.chatColumn}>
+                {isParticipant ? (
+                    <PlayerChat roomId={room.id} />
+                ) : (
                     <SpectatorChat roomId={room.id} watcherCount={room.watcher_count} />
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 }

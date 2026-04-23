@@ -374,9 +374,83 @@ func (_c *MockService_Get_Call) RunAndReturn(run func(ctx context.Context, roomI
 	return _c
 }
 
+// GetPlayerChat provides a mock function for the type MockService
+func (_mock *MockService) GetPlayerChat(ctx context.Context, roomID uuid.UUID, viewerID uuid.UUID) (*dto.SpectatorChatResponse, error) {
+	ret := _mock.Called(ctx, roomID, viewerID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPlayerChat")
+	}
+
+	var r0 *dto.SpectatorChatResponse
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) (*dto.SpectatorChatResponse, error)); ok {
+		return returnFunc(ctx, roomID, viewerID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) *dto.SpectatorChatResponse); ok {
+		r0 = returnFunc(ctx, roomID, viewerID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*dto.SpectatorChatResponse)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
+		r1 = returnFunc(ctx, roomID, viewerID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockService_GetPlayerChat_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPlayerChat'
+type MockService_GetPlayerChat_Call struct {
+	*mock.Call
+}
+
+// GetPlayerChat is a helper method to define mock.On call
+//   - ctx context.Context
+//   - roomID uuid.UUID
+//   - viewerID uuid.UUID
+func (_e *MockService_Expecter) GetPlayerChat(ctx interface{}, roomID interface{}, viewerID interface{}) *MockService_GetPlayerChat_Call {
+	return &MockService_GetPlayerChat_Call{Call: _e.mock.On("GetPlayerChat", ctx, roomID, viewerID)}
+}
+
+func (_c *MockService_GetPlayerChat_Call) Run(run func(ctx context.Context, roomID uuid.UUID, viewerID uuid.UUID)) *MockService_GetPlayerChat_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		var arg2 uuid.UUID
+		if args[2] != nil {
+			arg2 = args[2].(uuid.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockService_GetPlayerChat_Call) Return(spectatorChatResponse *dto.SpectatorChatResponse, err error) *MockService_GetPlayerChat_Call {
+	_c.Call.Return(spectatorChatResponse, err)
+	return _c
+}
+
+func (_c *MockService_GetPlayerChat_Call) RunAndReturn(run func(ctx context.Context, roomID uuid.UUID, viewerID uuid.UUID) (*dto.SpectatorChatResponse, error)) *MockService_GetPlayerChat_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetSpectatorChat provides a mock function for the type MockService
-func (_mock *MockService) GetSpectatorChat(ctx context.Context, roomID uuid.UUID) (*dto.SpectatorChatResponse, error) {
-	ret := _mock.Called(ctx, roomID)
+func (_mock *MockService) GetSpectatorChat(ctx context.Context, roomID uuid.UUID, viewerID uuid.UUID) (*dto.SpectatorChatResponse, error) {
+	ret := _mock.Called(ctx, roomID, viewerID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetSpectatorChat")
@@ -384,18 +458,18 @@ func (_mock *MockService) GetSpectatorChat(ctx context.Context, roomID uuid.UUID
 
 	var r0 *dto.SpectatorChatResponse
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) (*dto.SpectatorChatResponse, error)); ok {
-		return returnFunc(ctx, roomID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) (*dto.SpectatorChatResponse, error)); ok {
+		return returnFunc(ctx, roomID, viewerID)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) *dto.SpectatorChatResponse); ok {
-		r0 = returnFunc(ctx, roomID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) *dto.SpectatorChatResponse); ok {
+		r0 = returnFunc(ctx, roomID, viewerID)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*dto.SpectatorChatResponse)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
-		r1 = returnFunc(ctx, roomID)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
+		r1 = returnFunc(ctx, roomID, viewerID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -410,11 +484,12 @@ type MockService_GetSpectatorChat_Call struct {
 // GetSpectatorChat is a helper method to define mock.On call
 //   - ctx context.Context
 //   - roomID uuid.UUID
-func (_e *MockService_Expecter) GetSpectatorChat(ctx interface{}, roomID interface{}) *MockService_GetSpectatorChat_Call {
-	return &MockService_GetSpectatorChat_Call{Call: _e.mock.On("GetSpectatorChat", ctx, roomID)}
+//   - viewerID uuid.UUID
+func (_e *MockService_Expecter) GetSpectatorChat(ctx interface{}, roomID interface{}, viewerID interface{}) *MockService_GetSpectatorChat_Call {
+	return &MockService_GetSpectatorChat_Call{Call: _e.mock.On("GetSpectatorChat", ctx, roomID, viewerID)}
 }
 
-func (_c *MockService_GetSpectatorChat_Call) Run(run func(ctx context.Context, roomID uuid.UUID)) *MockService_GetSpectatorChat_Call {
+func (_c *MockService_GetSpectatorChat_Call) Run(run func(ctx context.Context, roomID uuid.UUID, viewerID uuid.UUID)) *MockService_GetSpectatorChat_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -424,9 +499,14 @@ func (_c *MockService_GetSpectatorChat_Call) Run(run func(ctx context.Context, r
 		if args[1] != nil {
 			arg1 = args[1].(uuid.UUID)
 		}
+		var arg2 uuid.UUID
+		if args[2] != nil {
+			arg2 = args[2].(uuid.UUID)
+		}
 		run(
 			arg0,
 			arg1,
+			arg2,
 		)
 	})
 	return _c
@@ -437,7 +517,7 @@ func (_c *MockService_GetSpectatorChat_Call) Return(spectatorChatResponse *dto.S
 	return _c
 }
 
-func (_c *MockService_GetSpectatorChat_Call) RunAndReturn(run func(ctx context.Context, roomID uuid.UUID) (*dto.SpectatorChatResponse, error)) *MockService_GetSpectatorChat_Call {
+func (_c *MockService_GetSpectatorChat_Call) RunAndReturn(run func(ctx context.Context, roomID uuid.UUID, viewerID uuid.UUID) (*dto.SpectatorChatResponse, error)) *MockService_GetSpectatorChat_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -850,6 +930,86 @@ func (_c *MockService_ListLive_Call) Return(gameRoomListResponse *dto.GameRoomLi
 }
 
 func (_c *MockService_ListLive_Call) RunAndReturn(run func(ctx context.Context, gameType dto.GameType, limit int, offset int) (*dto.GameRoomListResponse, error)) *MockService_ListLive_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PostPlayerChat provides a mock function for the type MockService
+func (_mock *MockService) PostPlayerChat(ctx context.Context, roomID uuid.UUID, userID uuid.UUID, body string) (*dto.SpectatorMessage, error) {
+	ret := _mock.Called(ctx, roomID, userID, body)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PostPlayerChat")
+	}
+
+	var r0 *dto.SpectatorMessage
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string) (*dto.SpectatorMessage, error)); ok {
+		return returnFunc(ctx, roomID, userID, body)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, string) *dto.SpectatorMessage); ok {
+		r0 = returnFunc(ctx, roomID, userID, body)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*dto.SpectatorMessage)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, string) error); ok {
+		r1 = returnFunc(ctx, roomID, userID, body)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockService_PostPlayerChat_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PostPlayerChat'
+type MockService_PostPlayerChat_Call struct {
+	*mock.Call
+}
+
+// PostPlayerChat is a helper method to define mock.On call
+//   - ctx context.Context
+//   - roomID uuid.UUID
+//   - userID uuid.UUID
+//   - body string
+func (_e *MockService_Expecter) PostPlayerChat(ctx interface{}, roomID interface{}, userID interface{}, body interface{}) *MockService_PostPlayerChat_Call {
+	return &MockService_PostPlayerChat_Call{Call: _e.mock.On("PostPlayerChat", ctx, roomID, userID, body)}
+}
+
+func (_c *MockService_PostPlayerChat_Call) Run(run func(ctx context.Context, roomID uuid.UUID, userID uuid.UUID, body string)) *MockService_PostPlayerChat_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		var arg2 uuid.UUID
+		if args[2] != nil {
+			arg2 = args[2].(uuid.UUID)
+		}
+		var arg3 string
+		if args[3] != nil {
+			arg3 = args[3].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+		)
+	})
+	return _c
+}
+
+func (_c *MockService_PostPlayerChat_Call) Return(spectatorMessage *dto.SpectatorMessage, err error) *MockService_PostPlayerChat_Call {
+	_c.Call.Return(spectatorMessage, err)
+	return _c
+}
+
+func (_c *MockService_PostPlayerChat_Call) RunAndReturn(run func(ctx context.Context, roomID uuid.UUID, userID uuid.UUID, body string) (*dto.SpectatorMessage, error)) *MockService_PostPlayerChat_Call {
 	_c.Call.Return(run)
 	return _c
 }

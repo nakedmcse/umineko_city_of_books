@@ -6,12 +6,11 @@ import { useNotifications } from "../../hooks/useNotifications";
 import { Button } from "../Button/Button";
 import styles from "./SpectatorChat.module.css";
 
-interface SpectatorChatProps {
+interface PlayerChatProps {
     roomId: string;
-    watcherCount: number;
 }
 
-export function SpectatorChat({ roomId, watcherCount }: SpectatorChatProps) {
+export function PlayerChat({ roomId }: PlayerChatProps) {
     const { user } = useAuth();
     const { addWSListener, wsEpoch } = useNotifications();
     const [messages, setMessages] = useState<SpectatorMessage[]>([]);
@@ -22,7 +21,7 @@ export function SpectatorChat({ roomId, watcherCount }: SpectatorChatProps) {
 
     useEffect(() => {
         let cancelled = false;
-        api.getSpectatorChat(roomId)
+        api.getPlayerChat(roomId)
             .then(resp => {
                 if (cancelled) {
                     return;
@@ -37,7 +36,7 @@ export function SpectatorChat({ roomId, watcherCount }: SpectatorChatProps) {
 
     useEffect(() => {
         return addWSListener((msg: WSMessage) => {
-            if (msg.type !== "spectator_chat_message") {
+            if (msg.type !== "player_chat_message") {
                 return;
             }
             const data = msg.data as { room_id?: string; message?: SpectatorMessage };
@@ -67,7 +66,7 @@ export function SpectatorChat({ roomId, watcherCount }: SpectatorChatProps) {
         setSending(true);
         setError("");
         try {
-            await api.postSpectatorChat(roomId, trimmed);
+            await api.postPlayerChat(roomId, trimmed);
             setBody("");
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to send");
@@ -86,12 +85,12 @@ export function SpectatorChat({ roomId, watcherCount }: SpectatorChatProps) {
     return (
         <div className={styles.panel}>
             <div className={styles.header}>
-                <span>Spectator chat</span>
-                <span>{watcherCount} watching</span>
+                <span>Player chat</span>
+                <span>Private</span>
             </div>
             <div className={styles.messages} ref={scrollRef}>
                 {messages.length === 0 ? (
-                    <p className={styles.empty}>No messages yet. Say hello.</p>
+                    <p className={styles.empty}>Only you and your opponent can see this chat.</p>
                 ) : (
                     messages.map(m => (
                         <div key={m.id} className={styles.message}>
@@ -109,7 +108,7 @@ export function SpectatorChat({ roomId, watcherCount }: SpectatorChatProps) {
                 <div className={styles.inputRow}>
                     <input
                         className={styles.input}
-                        placeholder="Chat with other watchers..."
+                        placeholder="Message your opponent..."
                         value={body}
                         onChange={e => setBody(e.target.value)}
                         onKeyDown={handleKey}

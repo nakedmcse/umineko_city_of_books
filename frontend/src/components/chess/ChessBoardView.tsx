@@ -143,6 +143,76 @@ export function ChessBoardView({ room, viewer, isSpectator, onMove, onResign }: 
         return g;
     }, [state?.fen]);
 
+    const [hoveredSquare, setHoveredSquare] = useState<string | null>(null);
+
+    const lastMove = useMemo(() => {
+        if (!state?.pgn) {
+            return null;
+        }
+        try {
+            const replay = new Chess();
+            replay.loadPgn(state.pgn);
+            const history = replay.history({ verbose: true }) as Array<{ from: string; to: string }>;
+            return history.length > 0 ? history[history.length - 1] : null;
+        } catch {
+            return null;
+        }
+    }, [state?.pgn]);
+
+    const checkSquare = useMemo(() => {
+        if (!game.isCheck()) {
+            return null;
+        }
+        const board = game.board();
+        const files = ["a", "b", "c", "d", "e", "f", "g", "h"];
+        for (let rank = 0; rank < 8; rank++) {
+            for (let file = 0; file < 8; file++) {
+                const piece = board[rank][file];
+                if (piece && piece.type === "k" && piece.color === game.turn()) {
+                    return files[file] + (8 - rank);
+                }
+            }
+        }
+        return null;
+    }, [game]);
+
+    const squareStyles = useMemo((): Record<string, React.CSSProperties> => {
+        const styles: Record<string, React.CSSProperties> = {};
+        if (lastMove) {
+            styles[lastMove.from] = { boxShadow: "inset 0 0 0 3px rgba(255, 210, 80, 0.55)" };
+            styles[lastMove.to] = { boxShadow: "inset 0 0 0 3px rgba(255, 210, 80, 0.55)" };
+        }
+        if (checkSquare) {
+            styles[checkSquare] = {
+                background: "radial-gradient(circle, rgba(220, 60, 60, 0.65) 0%, rgba(220, 60, 60, 0) 70%)",
+            };
+        }
+        if (hoveredSquare) {
+            try {
+                const moves = game.moves({ square: hoveredSquare as never, verbose: true }) as Array<{
+                    to: string;
+                    captured?: string;
+                }>;
+                for (const m of moves) {
+                    if (m.captured) {
+                        styles[m.to] = {
+                            ...styles[m.to],
+                            boxShadow: "inset 0 0 0 4px rgba(80, 80, 80, 0.45)",
+                        };
+                    } else {
+                        styles[m.to] = {
+                            ...styles[m.to],
+                            background: "radial-gradient(circle, rgba(80, 80, 80, 0.4) 20%, transparent 22%)",
+                        };
+                    }
+                }
+            } catch {
+                // invalid square, ignore
+            }
+        }
+        return styles;
+    }, [lastMove, checkSquare, hoveredSquare, game]);
+
     async function handleDrop({
         sourceSquare,
         targetSquare,
@@ -256,62 +326,84 @@ export function ChessBoardView({ room, viewer, isSpectator, onMove, onResign }: 
                         position: state?.fen || "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
                         boardOrientation: orientation,
                         allowDragging: isMyTurn,
+                        squareStyles,
+                        onMouseOverSquare: ({ square, piece }) => {
+                            if (piece) {
+                                setHoveredSquare(square);
+                            }
+                        },
+                        onMouseOutSquare: () => {
+                            setHoveredSquare(null);
+                        },
                         onPieceDrop: args => {
                             void handleDrop(args);
+                            setHoveredSquare(null);
                             return false;
                         },
                     }}
                 />
             </div>
 
-            {(room.status === "finished" || room.status === "abandoned") && (
-                <div className={styles.gameOver}>
-                    <div className={styles.result}>
-                        <span
-                            className={
-                                result.tone === "win"
-                                    ? styles.resultWin
-                                    : result.tone === "loss"
-                                      ? styles.resultLoss
-                                      : styles.resultDraw
-                            }
-                        >
-                            {result.text}
-                        </span>
-                        {isChessStats(room.stats) && room.stats.result_reason && (
-                            <span className={styles.resultReason}> {formatReason(room.stats.result_reason)}</span>
+            {(() => {
+                const isOver = room.status === "finished" || room.status === "abandoned";
+                const showStats = isChessStats(room.stats) && (isOver || (room.status === "active" && isSpectator));
+                if (!isOver && !showStats) {
+                    return null;
+                }
+                return (
+                    <div className={styles.gameOver}>
+                        {isOver && (
+                            <div className={styles.result}>
+                                <span
+                                    className={
+                                        result.tone === "win"
+                                            ? styles.resultWin
+                                            : result.tone === "loss"
+                                              ? styles.resultLoss
+                                              : styles.resultDraw
+                                    }
+                                >
+                                    {result.text}
+                                </span>
+                                {isChessStats(room.stats) && room.stats.result_reason && (
+                                    <span className={styles.resultReason}>
+                                        {" "}
+                                        {formatReason(room.stats.result_reason)}
+                                    </span>
+                                )}
+                            </div>
+                        )}
+                        {showStats && isChessStats(room.stats) && (
+                            <div className={styles.statsGrid}>
+                                <div className={styles.statsHeader}>
+                                    <span>{white?.display_name ?? "White"}</span>
+                                    <span>{isOver ? "" : "Live stats"}</span>
+                                    <span>{black?.display_name ?? "Black"}</span>
+                                </div>
+                                <div className={styles.statsRow}>
+                                    <span>{room.stats.white_moves}</span>
+                                    <span className={styles.statsLabel}>Moves</span>
+                                    <span>{room.stats.black_moves}</span>
+                                </div>
+                                <div className={styles.statsRow}>
+                                    <span>{room.stats.white_captures}</span>
+                                    <span className={styles.statsLabel}>Captures</span>
+                                    <span>{room.stats.black_captures}</span>
+                                </div>
+                                <div className={styles.statsRow}>
+                                    <span>{room.stats.white_checks}</span>
+                                    <span className={styles.statsLabel}>Checks given</span>
+                                    <span>{room.stats.black_checks}</span>
+                                </div>
+                                <div className={styles.statsFooter}>
+                                    <span>Total ply: {room.stats.total_ply}</span>
+                                    <span>Duration: {formatDuration(room.stats.duration_seconds)}</span>
+                                </div>
+                            </div>
                         )}
                     </div>
-                    {isChessStats(room.stats) && (
-                        <div className={styles.statsGrid}>
-                            <div className={styles.statsHeader}>
-                                <span>{white?.display_name ?? "White"}</span>
-                                <span />
-                                <span>{black?.display_name ?? "Black"}</span>
-                            </div>
-                            <div className={styles.statsRow}>
-                                <span>{room.stats.white_moves}</span>
-                                <span className={styles.statsLabel}>Moves</span>
-                                <span>{room.stats.black_moves}</span>
-                            </div>
-                            <div className={styles.statsRow}>
-                                <span>{room.stats.white_captures}</span>
-                                <span className={styles.statsLabel}>Captures</span>
-                                <span>{room.stats.black_captures}</span>
-                            </div>
-                            <div className={styles.statsRow}>
-                                <span>{room.stats.white_checks}</span>
-                                <span className={styles.statsLabel}>Checks given</span>
-                                <span>{room.stats.black_checks}</span>
-                            </div>
-                            <div className={styles.statsFooter}>
-                                <span>Total ply: {room.stats.total_ply}</span>
-                                <span>Duration: {formatDuration(room.stats.duration_seconds)}</span>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            )}
+                );
+            })()}
 
             {room.status === "active" && !isSpectator && (
                 <div className={styles.controls}>

@@ -218,7 +218,7 @@ func TestListFinished_SkipsStatsWhenHandlerFails(t *testing.T) {
 	assert.Nil(t, resp.Rooms[0].Stats)
 }
 
-func TestHydrate_OmitsStatsForActiveRoom(t *testing.T) {
+func TestHydrate_ComputesStatsForActiveRoom(t *testing.T) {
 	// given
 	m := newTestService(t)
 	roomID := uuid.New()
@@ -236,13 +236,16 @@ func TestHydrate_OmitsStatsForActiveRoom(t *testing.T) {
 		{UserID: creator, Slot: 0, Joined: true},
 	}, nil)
 	seedUser(t, m.userRepo, creator, "Alice")
+	m.handler.EXPECT().
+		ComputeStats(row.StateJSON, row.Result, row.CreatedAt, "").
+		Return(map[string]any{"total_ply": 4}, nil)
 
 	// when
 	got, err := m.svc.hydrateRoom(context.Background(), row)
 
 	// then
 	require.NoError(t, err)
-	assert.Nil(t, got.Stats, "active rooms should not trigger ComputeStats")
+	require.NotNil(t, got.Stats, "active rooms should include live stats")
 }
 
 func TestHydrate_ExposesDisconnectedAtForOfflinePlayer(t *testing.T) {
@@ -263,6 +266,10 @@ func TestHydrate_ExposesDisconnectedAtForOfflinePlayer(t *testing.T) {
 		{UserID: playerID, Slot: 0, Joined: true},
 	}, nil)
 	seedUser(t, m.userRepo, playerID, "Alice")
+	m.handler.EXPECT().
+		ComputeStats(mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Return(nil, nil).
+		Maybe()
 
 	disconnectedAt := time.Date(2026, 4, 22, 10, 4, 0, 0, time.UTC)
 	m.svc.mu.Lock()
