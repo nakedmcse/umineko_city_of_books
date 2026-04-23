@@ -36,10 +36,36 @@ const (
 	systemAdminsName = "Administrators"
 	systemModsDesc   = "Private staff room for moderators, admins, and super admins. Membership is managed automatically."
 	systemAdminsDesc = "Private room for admins and super admins. Membership is managed automatically."
-
-	veryGoodTrigger  = "<VERY GOOOOOD>"
-	veryGoodAudioURL = "https://quotes.auaurora.moe/api/v1/umineko/audio/voice/46/64501229"
 )
+
+type chatTrigger struct {
+	text     string
+	audioURL string
+	volume   float64
+}
+
+var chatTriggers = []chatTrigger{
+	{
+		text:     "<VERY GOOOOOD>",
+		audioURL: "https://quotes.auaurora.moe/api/v1/umineko/audio/voice/46/64501229",
+		volume:   0.5,
+	},
+	{
+		text:     "nipah",
+		audioURL: "https://quotes.auaurora.moe/api/v1/umineko/audio/voice/28/92100174",
+		volume:   0.5,
+	},
+	{
+		text:     "<OH YEAAAAHHH>",
+		audioURL: "https://quotes.auaurora.moe/api/v1/umineko/audio/voice/46/64501228",
+		volume:   0.5,
+	},
+	{
+		text:     "<OH YEAAAAHHH>",
+		audioURL: "https://quotes.auaurora.moe/api/v1/umineko/audio/voice/46/64501228",
+		volume:   0.5,
+	},
+}
 
 var (
 	mentionRegex     = regexp.MustCompile(`@([a-zA-Z0-9_]+)`)
@@ -1506,17 +1532,19 @@ func (s *service) SendMessage(ctx context.Context, senderID, roomID uuid.UUID, r
 		s.sideEffectsWG.Add(1)
 		go s.dispatchPostSendSideEffects(roomID, senderID, msgID, recipients, roomRow, mentionedIDs, replyToAuthor, isGroup)
 
-		if req.Body == veryGoodTrigger {
-			audioMsg := ws.Message{
-				Type: "chat_audio",
-				Data: map[string]any{
-					"room_id": roomID.String(),
-					"url":     veryGoodAudioURL,
-					"volume":  0.5,
-				},
-			}
-			for i := 0; i < len(members); i++ {
-				s.hub.SendToUser(members[i], audioMsg)
+		for i := 0; i < len(chatTriggers); i++ {
+			if req.Body == chatTriggers[i].text {
+				audioMsg := ws.Message{
+					Type: "chat_audio",
+					Data: map[string]any{
+						"room_id": roomID.String(),
+						"url":     chatTriggers[i].audioURL,
+						"volume":  chatTriggers[i].volume,
+					},
+				}
+				for j := 0; j < len(members); j++ {
+					s.hub.SendToUser(members[j], audioMsg)
+				}
 			}
 		}
 	}
