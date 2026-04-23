@@ -40,6 +40,25 @@ export function UserMenu() {
 
             {isOpen && (
                 <div className={styles.dropdown}>
+                    <button
+                        className={styles.option}
+                        onClick={() => {
+                            setIsOpen(false);
+                            navigate(`/user/${user.username}`);
+                        }}
+                    >
+                        Profile
+                    </button>
+                    <button
+                        className={styles.option}
+                        onClick={() => {
+                            setIsOpen(false);
+                            navigate("/settings");
+                        }}
+                    >
+                        Settings
+                    </button>
+                    <div className={styles.divider} />
                     <button className={styles.option} onClick={handleLogout}>
                         Logout
                     </button>
