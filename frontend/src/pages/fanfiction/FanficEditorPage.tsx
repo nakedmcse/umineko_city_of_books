@@ -585,7 +585,7 @@ export function FanficEditorPage() {
         );
     }
 
-    if (!initialised) {
+    if (!isEdit && !initialised) {
         return null;
     }
 
