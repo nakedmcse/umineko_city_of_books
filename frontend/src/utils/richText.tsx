@@ -62,9 +62,7 @@ function parseBlocks(text: string): Block[] {
     return blocks;
 }
 
-function splitInlineCode(
-    text: string,
-): Array<{
+function splitInlineCode(text: string): Array<{
     type:
         | "text"
         | "code"
@@ -93,7 +91,7 @@ function splitInlineCode(
         content: string;
     }> = [];
 
-    // Note - order of rules is important - needs to be longest first
+    // Note - order of rules is important; needs to be longest first
     const rules: Array<{
         open: string;
         close: string;
