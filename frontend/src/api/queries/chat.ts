@@ -16,66 +16,21 @@ import { queryClient } from "../queryClient";
 import { queryKeys } from "../queryKeys";
 
 export function fetchRoomMessages(roomId: string, limit?: number, offset?: number) {
-    return queryClient.fetchQuery({
-        queryKey: [...queryKeys.chat.roomMessages(roomId), { limit, offset }],
-        queryFn: () => getRoomMessages(roomId, limit, offset),
-    });
+    return getRoomMessages(roomId, limit, offset);
 }
 
 export function fetchRoomMessagesBefore(roomId: string, beforeCursor: string, limit?: number) {
-    return queryClient.fetchQuery({
-        queryKey: [...queryKeys.chat.roomMessages(roomId), "before", beforeCursor, { limit }],
-        queryFn: () => getRoomMessagesBefore(roomId, beforeCursor, limit),
-    });
+    return getRoomMessagesBefore(roomId, beforeCursor, limit);
 }
 
 export function fetchUserRooms() {
-    return queryClient.fetchQuery({
-        queryKey: ["chat", "rooms", "user"],
-        queryFn: () => getUserRooms(),
-    });
+    return getUserRooms();
 }
 
 export function fetchResolveDMRoom(recipientId: string) {
     return queryClient.fetchQuery({
         queryKey: ["chat", "dm-resolve", recipientId],
         queryFn: () => resolveDMRoom(recipientId),
-    });
-}
-
-export function fetchChatRoomMembers(roomId: string) {
-    return queryClient.fetchQuery({
-        queryKey: queryKeys.chat.roomMembers(roomId),
-        queryFn: () => getChatRoomMembers(roomId),
-    });
-}
-
-export function fetchMyChatRooms(params: {
-    role?: "host" | "member";
-    search?: string;
-    rp?: boolean;
-    tag?: string;
-    includeArchived?: boolean;
-    limit?: number;
-    offset?: number;
-}) {
-    return queryClient.fetchQuery({
-        queryKey: ["chat", "rooms", "mine", params],
-        queryFn: () => listMyChatRooms(params),
-    });
-}
-
-export function fetchPublicChatRooms(params: {
-    search?: string;
-    rp?: boolean;
-    tag?: string;
-    includeArchived?: boolean;
-    limit?: number;
-    offset?: number;
-}) {
-    return queryClient.fetchQuery({
-        queryKey: ["chat", "rooms", "public", params],
-        queryFn: () => listPublicChatRooms(params),
     });
 }
 
