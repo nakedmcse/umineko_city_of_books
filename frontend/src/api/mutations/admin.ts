@@ -184,7 +184,10 @@ export function useCreateAnnouncement() {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: ({ title, body }: { title: string; body: string }) => createAnnouncement(title, body),
-        onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.admin.announcements() }),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: queryKeys.admin.announcements() });
+            qc.invalidateQueries({ queryKey: ["announcements"] });
+        },
     });
 }
 
@@ -193,7 +196,10 @@ export function useUpdateAnnouncement() {
     return useMutation({
         mutationFn: ({ id, title, body }: { id: string; title: string; body: string }) =>
             updateAnnouncement(id, title, body),
-        onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.admin.announcements() }),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: queryKeys.admin.announcements() });
+            qc.invalidateQueries({ queryKey: ["announcements"] });
+        },
     });
 }
 
@@ -201,7 +207,10 @@ export function useDeleteAnnouncement() {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (id: string) => deleteAnnouncement(id),
-        onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.admin.announcements() }),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: queryKeys.admin.announcements() });
+            qc.invalidateQueries({ queryKey: ["announcements"] });
+        },
     });
 }
 
@@ -209,7 +218,10 @@ export function usePinAnnouncement() {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: ({ id, pinned }: { id: string; pinned: boolean }) => pinAnnouncement(id, pinned),
-        onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.admin.announcements() }),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: queryKeys.admin.announcements() });
+            qc.invalidateQueries({ queryKey: ["announcements"] });
+        },
     });
 }
 

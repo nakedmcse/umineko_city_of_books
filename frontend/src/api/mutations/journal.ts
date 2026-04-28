@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+﻿import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
     createJournal,
     createJournalComment,
@@ -15,8 +15,6 @@ import {
 import type { CreateJournalPayload } from "../../types/api";
 import { queryKeys } from "../queryKeys";
 
-const detail = (id: string) => queryKeys.journal.detail(id);
-
 export function useCreateJournal() {
     const qc = useQueryClient();
     return useMutation({
@@ -29,7 +27,7 @@ export function useUpdateJournal(id: string) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (payload: CreateJournalPayload) => updateJournal(id, payload),
-        onSuccess: () => qc.invalidateQueries({ queryKey: detail(id) }),
+        onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.journal.all }),
     });
 }
 
@@ -45,7 +43,7 @@ export function useFollowJournal() {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (id: string) => followJournal(id),
-        onSuccess: (_d, id) => qc.invalidateQueries({ queryKey: detail(id) }),
+        onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.journal.all }),
     });
 }
 
@@ -53,7 +51,7 @@ export function useUnfollowJournal() {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (id: string) => unfollowJournal(id),
-        onSuccess: (_d, id) => qc.invalidateQueries({ queryKey: detail(id) }),
+        onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.journal.all }),
     });
 }
 
@@ -62,47 +60,47 @@ export function useCreateJournalComment(journalId: string) {
     return useMutation({
         mutationFn: ({ body, parentId }: { body: string; parentId?: string }) =>
             createJournalComment(journalId, body, parentId),
-        onSuccess: () => qc.invalidateQueries({ queryKey: detail(journalId) }),
+        onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.journal.all }),
     });
 }
 
-export function useUpdateJournalComment(journalId: string) {
+export function useUpdateJournalComment(_journalId: string) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: ({ id, body }: { id: string; body: string }) => updateJournalComment(id, body),
-        onSuccess: () => qc.invalidateQueries({ queryKey: detail(journalId) }),
+        onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.journal.all }),
     });
 }
 
-export function useDeleteJournalComment(journalId: string) {
+export function useDeleteJournalComment(_journalId: string) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (id: string) => deleteJournalComment(id),
-        onSuccess: () => qc.invalidateQueries({ queryKey: detail(journalId) }),
+        onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.journal.all }),
     });
 }
 
-export function useLikeJournalComment(journalId: string) {
+export function useLikeJournalComment(_journalId: string) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (id: string) => likeJournalComment(id),
-        onSuccess: () => qc.invalidateQueries({ queryKey: detail(journalId) }),
+        onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.journal.all }),
     });
 }
 
-export function useUnlikeJournalComment(journalId: string) {
+export function useUnlikeJournalComment(_journalId: string) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (id: string) => unlikeJournalComment(id),
-        onSuccess: () => qc.invalidateQueries({ queryKey: detail(journalId) }),
+        onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.journal.all }),
     });
 }
 
-export function useUploadJournalCommentMedia(journalId: string) {
+export function useUploadJournalCommentMedia(_journalId: string) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: ({ commentId, file }: { commentId: string; file: File }) =>
             uploadJournalCommentMedia(commentId, file),
-        onSuccess: () => qc.invalidateQueries({ queryKey: detail(journalId) }),
+        onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.journal.all }),
     });
 }

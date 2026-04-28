@@ -8,54 +8,52 @@ import {
     uploadAnnouncementCommentMedia,
 } from "../endpoints";
 
-const detail = (id: string) => ["announcements", "detail", id] as const;
-
 export function useCreateAnnouncementComment(announcementId: string) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: ({ body, parentId }: { body: string; parentId?: string }) =>
             createAnnouncementComment(announcementId, body, parentId),
-        onSuccess: () => qc.invalidateQueries({ queryKey: detail(announcementId) }),
+        onSuccess: () => qc.invalidateQueries({ queryKey: ["announcements"] }),
     });
 }
 
-export function useUpdateAnnouncementComment(announcementId: string) {
+export function useUpdateAnnouncementComment(_announcementId: string) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: ({ id, body }: { id: string; body: string }) => updateAnnouncementComment(id, body),
-        onSuccess: () => qc.invalidateQueries({ queryKey: detail(announcementId) }),
+        onSuccess: () => qc.invalidateQueries({ queryKey: ["announcements"] }),
     });
 }
 
-export function useDeleteAnnouncementComment(announcementId: string) {
+export function useDeleteAnnouncementComment(_announcementId: string) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (id: string) => deleteAnnouncementComment(id),
-        onSuccess: () => qc.invalidateQueries({ queryKey: detail(announcementId) }),
+        onSuccess: () => qc.invalidateQueries({ queryKey: ["announcements"] }),
     });
 }
 
-export function useLikeAnnouncementComment(announcementId: string) {
+export function useLikeAnnouncementComment(_announcementId: string) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (id: string) => likeAnnouncementComment(id),
-        onSuccess: () => qc.invalidateQueries({ queryKey: detail(announcementId) }),
+        onSuccess: () => qc.invalidateQueries({ queryKey: ["announcements"] }),
     });
 }
 
-export function useUnlikeAnnouncementComment(announcementId: string) {
+export function useUnlikeAnnouncementComment(_announcementId: string) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (id: string) => unlikeAnnouncementComment(id),
-        onSuccess: () => qc.invalidateQueries({ queryKey: detail(announcementId) }),
+        onSuccess: () => qc.invalidateQueries({ queryKey: ["announcements"] }),
     });
 }
 
-export function useUploadAnnouncementCommentMedia(announcementId: string) {
+export function useUploadAnnouncementCommentMedia(_announcementId: string) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: ({ commentId, file }: { commentId: string; file: File }) =>
             uploadAnnouncementCommentMedia(commentId, file),
-        onSuccess: () => qc.invalidateQueries({ queryKey: detail(announcementId) }),
+        onSuccess: () => qc.invalidateQueries({ queryKey: ["announcements"] }),
     });
 }

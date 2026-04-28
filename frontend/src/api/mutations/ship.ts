@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+﻿import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
     createShip,
     createShipComment,
@@ -15,8 +15,6 @@ import {
 import type { ShipCharacter } from "../../types/api";
 import { queryKeys } from "../queryKeys";
 
-const detail = (id: string) => queryKeys.ship.detail(id);
-
 export function useCreateShip() {
     const qc = useQueryClient();
     return useMutation({
@@ -29,7 +27,7 @@ export function useUpdateShip(id: string) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (data: { title: string; description: string; characters: ShipCharacter[] }) => updateShip(id, data),
-        onSuccess: () => qc.invalidateQueries({ queryKey: detail(id) }),
+        onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.ship.all }),
     });
 }
 
@@ -41,19 +39,11 @@ export function useDeleteShip() {
     });
 }
 
-export function useUploadShipImage(id: string) {
-    const qc = useQueryClient();
-    return useMutation({
-        mutationFn: (file: File) => uploadShipImage(id, file),
-        onSuccess: () => qc.invalidateQueries({ queryKey: detail(id) }),
-    });
-}
-
 export function useUploadShipImageById() {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: ({ id, file }: { id: string; file: File }) => uploadShipImage(id, file),
-        onSuccess: (_data, vars) => qc.invalidateQueries({ queryKey: detail(vars.id) }),
+        onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.ship.all }),
     });
 }
 
@@ -61,7 +51,7 @@ export function useVoteShip(id: string) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (value: number) => voteShip(id, value),
-        onSuccess: () => qc.invalidateQueries({ queryKey: detail(id) }),
+        onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.ship.all }),
     });
 }
 
@@ -70,46 +60,46 @@ export function useCreateShipComment(shipId: string) {
     return useMutation({
         mutationFn: ({ body, parentId }: { body: string; parentId?: string }) =>
             createShipComment(shipId, body, parentId),
-        onSuccess: () => qc.invalidateQueries({ queryKey: detail(shipId) }),
+        onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.ship.all }),
     });
 }
 
-export function useUpdateShipComment(shipId: string) {
+export function useUpdateShipComment(_shipId: string) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: ({ id, body }: { id: string; body: string }) => updateShipComment(id, body),
-        onSuccess: () => qc.invalidateQueries({ queryKey: detail(shipId) }),
+        onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.ship.all }),
     });
 }
 
-export function useDeleteShipComment(shipId: string) {
+export function useDeleteShipComment(_shipId: string) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (id: string) => deleteShipComment(id),
-        onSuccess: () => qc.invalidateQueries({ queryKey: detail(shipId) }),
+        onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.ship.all }),
     });
 }
 
-export function useLikeShipComment(shipId: string) {
+export function useLikeShipComment(_shipId: string) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (id: string) => likeShipComment(id),
-        onSuccess: () => qc.invalidateQueries({ queryKey: detail(shipId) }),
+        onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.ship.all }),
     });
 }
 
-export function useUnlikeShipComment(shipId: string) {
+export function useUnlikeShipComment(_shipId: string) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (id: string) => unlikeShipComment(id),
-        onSuccess: () => qc.invalidateQueries({ queryKey: detail(shipId) }),
+        onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.ship.all }),
     });
 }
 
-export function useUploadShipCommentMedia(shipId: string) {
+export function useUploadShipCommentMedia(_shipId: string) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: ({ commentId, file }: { commentId: string; file: File }) => uploadShipCommentMedia(commentId, file),
-        onSuccess: () => qc.invalidateQueries({ queryKey: detail(shipId) }),
+        onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.ship.all }),
     });
 }
